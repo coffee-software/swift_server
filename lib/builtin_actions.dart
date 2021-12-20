@@ -23,21 +23,24 @@ abstract class StatusAction extends JsonAction {
  */
 abstract class SchemaAction extends JsonAction {
 
-  Map<String, dynamic> routeNodeToMap(RouteNode node)
+  Map<String, dynamic> routeNodeToMap(String path, RouteNode node)
   {
-    Map<String, dynamic> ret = {
-      'handler': node.className,
-      'subnodes': {}
-    };
+    Map<String, dynamic> ret = {};
+    if (node.className != null) {
+      ret[path] = {
+        'handler': node.className,
+        'params': {}
+      };
+    }
     node.subNodes.forEach((k, node){
-      ret['subnodes'][k] = routeNodeToMap(node);
+      ret.addAll(routeNodeToMap(path + '/' + k, node));
     });
     return ret;
   }
 
   Future<dynamic> run() async
   {
-    return routeNodeToMap(server.routing.root);
+    return routeNodeToMap('', server.routing.root);
   }
 
 }
@@ -52,7 +55,7 @@ abstract class RobotsAction extends HttpAction {
   Future handleRequest() async
   {
     request.response.statusCode = 200;
-    request.response.headers.contentType = new ContentType('text', 'plain');
+    request.response.headers.contentType = ContentType.text;
     request.response.writeln('User-agent: *');
     request.response.writeln('Disallow: /');
   }
@@ -71,7 +74,7 @@ abstract class FaviconAction extends HttpAction {
   {
     request.response.statusCode = 200;
     request.response.headers.contentType = new ContentType('image', 'svg+xml');
-    request.response.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" height="238" width="238"><path d="M 141,237 C 95,243 47,223 20,188 92,230 189,202 199,143 209,83 168,54 129,53 77,52 20,83 71,141 82,154 120,170 139,140 172,84 58,84 118,134 78,136 70,107 81,92 89,81 133,70 152,86 194,118 151,177 113,188 68,202 20,170 6,130 -24,37 58,-4 129,0 200,5 240,52 237,124 c -1,44 -47,106 -97,113 z" style="fill:#4582b2;" /></svg>');
+    request.response.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" height="100" width="100"><path d="M 60,100 C 42,100 20,94 9,79 39,97 80,85 84,60 89,35 71,23 55,22 33,22 9,35 31,59 35,65 51,72 59,59 73,35 25,35 50,56 33,57 30,45 35,39 38,34 56,30 65,36 82,50 64,74 48,79 29,85 9,72 3,55 -10,16 25,0 55,0 85,0 100,29 100,52 100,76 80,99 60,100 Z" style="fill:#4582b2"/></svg>');
   }
 
 }
