@@ -7,6 +7,11 @@ import 'dart:typed_data';
 
 import 'package:swift_server/server.dart';
 
+Future<MockResponse> getServerResponse(Server server, MockRequest request) async {
+  await server.handleRequest(request);
+  return request.response;
+}
+
 class MockHeaders extends HttpHeaders {
   @override
   List<String>? operator [](String name) {

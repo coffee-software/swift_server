@@ -278,9 +278,9 @@ abstract class Db {
     return await (await this.getConnection()).query(sql, values);
   }
 
-  Future<ResultRow?> fetchRow(String sql, [List<Object?>? values]) async {
+  Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
     for (var row in await (await this.getConnection()).query(sql, values)) {
-      return row;
+      return row.fields;
     }
     return null;
   }

@@ -1,2 +1,8 @@
 datadir: .
 port: 9123
+database:
+  host: localhost
+  port: 3306
+  database: swift_test
+  user: swift_test
+  password: swift_test
