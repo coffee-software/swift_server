@@ -178,7 +178,7 @@ abstract class Router {
     List<String> pathArgs = new List<String>.from(request.uri.pathSegments);
     String? className = this.mapPathToClassName(pathArgs);
     if (className == null) {
-      throw new HttpException(HttpStatus.NOT_FOUND, request.uri.toString());
+      throw new HttpException(HttpStatus.notFound, request.uri.toString());
     }
     HttpAction action = createAction(className);
     action.request = request;
@@ -268,6 +268,12 @@ abstract class Db {
     return connection!;
   }
 
+  Future<void> disconnect() async {
+    if (connection != null) {
+      await connection!.close();
+    }
+  }
+
   Future<IterableBase<ResultRow>> fetchRows(String sql, [List<Object?>? values]) async {
     return await (await this.getConnection()).query(sql, values);
   }
@@ -342,7 +348,7 @@ abstract class Server {
       } else if (error is Redirect) {
         request.response.redirect(new Uri.http(request.uri.authority, error.uri));
       } else {
-        writeError(request, HttpStatus.INTERNAL_SERVER_ERROR, 'unknown error occured');
+        writeError(request, HttpStatus.internalServerError, 'unknown error occured');
         print(error.toString());
         print(stackTrace.toString());
         //TODO if developer mode:
