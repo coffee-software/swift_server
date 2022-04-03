@@ -10,9 +10,13 @@ abstract class StatusAction extends JsonAction {
 
   Future<dynamic> run() async
   {
+    var db = await server.db.fetchOne('SELECT 1') == 1;
     return {
       'time': DateTime.now().toString(),
-      'healthy': true
+      'healthy': db,
+      'checks': {
+        'db': db
+      }
     };
   }
 
