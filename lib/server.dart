@@ -271,6 +271,7 @@ abstract class Db {
   Future<void> disconnect() async {
     if (connection != null) {
       await connection!.close();
+      connection = null;
     }
   }
 
@@ -357,6 +358,7 @@ abstract class Server {
       }
     }
     request.response.close();
+    db.disconnect();
     print("${request.method} ${request.uri} ${request.response.statusCode} [${new DateTime.now().millisecondsSinceEpoch - start}ms]");
   }
 
