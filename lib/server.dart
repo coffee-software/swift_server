@@ -1,10 +1,13 @@
 library c7server;
 
+import 'dart:collection';
 import 'dart:io';
 export 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:mysql1/mysql1.dart';
 import 'package:swift_composer/swift_composer.dart';
+import 'package:swift_server/http_status_codes.dart';
 export 'package:swift_composer/swift_composer.dart';
 import 'package:yaml/yaml.dart';
 import 'package:args/args.dart';
@@ -12,6 +15,7 @@ import 'package:args/args.dart';
 export 'builtin_actions.dart';
 
 const PostArg = true;
+const GetArg = true;
 const PathArg = true;
 
 /**
@@ -61,16 +65,25 @@ abstract class HttpAction {
     field = (json.containsKey(name) ? new List.from(json[name]) : null);
   }
 
+  @Compile
+
+  void setGetArgs(Map<String, String> queryParameters);
+
+  @CompileFieldsOfType
+  @AnnotatedWith(GetArg)
+  void _setGetArgsStringRequired(Map<String, String> queryParameters, String name, String field) {
+    if (!queryParameters.containsKey(name)) {
+      throw new HttpException(422, 'Missing required parameter ' + name);
+    }
+    field = queryParameters[name]!;
+  }
+
   Future handleRequest();
 }
 
 class Redirect implements Exception {
   String uri;
   Redirect(this.uri);
-}
-
-class Error404 implements Exception {
-  Error404();
 }
 
 class HttpException implements Exception {
@@ -99,6 +112,7 @@ abstract class JsonAction extends HttpAction {
       }
     }
     setPostArgs(postArgs);
+    setGetArgs(request.uri.queryParameters);
 
     String ret = json.encode(await this.run());
 
@@ -179,7 +193,7 @@ abstract class Router {
     List<String> pathArgs = new List<String>.from(request.uri.pathSegments);
     String? className = this.mapPathToClassName(pathArgs);
     if (className == null) {
-      throw new Error404();
+      throw new HttpException(HttpStatus.notFound, request.uri.toString());
     }
     HttpAction action = createAction(className);
     action.request = request;
@@ -205,9 +219,15 @@ class ServerConfig {
     List<String> path = code.split('.');
     Map ret = data;
     for (int i=0; i < path.length - 1; i++) {
+      if (!ret.containsKey(path[i])) {
+        throw new Exception('missing required config value: ${path[i]}');
+      }
       ret = ret[path[i]];
     }
-    return data[path.last];
+    if (!ret.containsKey(path.last)) {
+      throw new Exception('missing required config value: ${path.last}');
+    }
+    return ret[path.last];
   }
 }
 
@@ -219,11 +239,84 @@ abstract class ServerArgs {
   parse(List<String> arguments) {
     var parser = ArgParser();
     parser.addOption('config');
+    parser.addOption('port');
     this.args = parser.parse(arguments);
+    var argsPort = this.args!['port'];
+    if (argsPort != null) {
+      if (int.tryParse(argsPort) == null || int.parse(argsPort) < 1) {
+        throw new Exception('--port value must be a positive integer.');
+      }
+      port = int.tryParse(argsPort);
+    }
   }
+
+  int? port;
 
   String get configPath {
     return this.args!['config'];
+  }
+
+}
+
+@Compose
+abstract class Db {
+
+  @Inject
+  ServerConfig get config;
+
+  MySqlConnection? connection;
+
+  Future<MySqlConnection> getConnection() async {
+    if (connection == null) {
+      connection = await MySqlConnection.connect(
+          ConnectionSettings(
+              host: config.getRequired<String>('database.host'),
+              port: config.getRequired<int>('database.port'),
+              user: config.getRequired<String>('database.user'),
+              db: config.getRequired<String>('database.database'),
+              password: config.getRequired<String>('database.password')
+          )
+      );
+      //temporary fix for new mysql version
+      await Future.delayed(Duration(milliseconds: 1));
+    }
+    return connection!;
+  }
+
+  Future<void> disconnect() async {
+    if (connection != null) {
+      await connection!.close();
+      connection = null;
+    }
+  }
+
+  DateTime fixTZ(DateTime dbDate) {
+    //fix for datetime beeing forced to utc
+    return new DateTime.fromMillisecondsSinceEpoch(dbDate
+        .subtract(new DateTime.now().timeZoneOffset)
+        .millisecondsSinceEpoch);
+  }
+
+  Future<IterableBase<ResultRow>> fetchRows(String sql, [List<Object?>? values]) async {
+    return await (await this.getConnection()).query(sql, values);
+  }
+
+  Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
+    for (var row in await (await this.getConnection()).query(sql, values)) {
+      return row.fields;
+    }
+    return null;
+  }
+
+  dynamic fetchOne(String sql, [List<Object?>? values]) async {
+    for (var row in await (await this.getConnection()).query(sql, values)) {
+      return row[0];
+    }
+    return null;
+  }
+
+  Future<void> query(String sql, [List<Object?>? values]) async {
+    await (await this.getConnection()).query(sql, values);
   }
 
 }
@@ -239,9 +332,11 @@ abstract class Server {
   ServerConfig get config;
   @Inject
   ServerArgs get args;
+  @Inject
+  Db get db;
 
   String get datadir => config.getRequired<String>('datadir');
-  int get port => config.getRequired<int>('port');
+  int get port => args.port ?? config.getRequired<int>('port');
 
   Future serve(List<String> arguments) async {
     args.parse(arguments);
@@ -253,6 +348,16 @@ abstract class Server {
     server.listen(handleRequest);
   }
 
+  void writeError(HttpRequest request, int code, String message) {
+    //TODO depend on request accepted header
+    request.response.statusCode = code;
+    request.response.headers.contentType = ContentType.json;
+    request.response.write(json.encode({
+      'error':  "${code} ${httpStatusMessage[code]!}",
+      'message': message
+    }));
+  }
+
   Future handleRequest(HttpRequest request) async {
     int start = new DateTime.now().millisecondsSinceEpoch;
     try {
@@ -261,28 +366,21 @@ abstract class Server {
 
     } catch (error, stackTrace) {
       if (error is HttpException) {
-        request.response.statusCode = error.code;
-        request.response.headers.contentType = ContentType.html;
-        request.response.write("<h1>${error.code} ERROR</h1>");
-        request.response.write("<p>${error.message}</p>");
-      } else if (error is Error404) {
-        request.response.statusCode = 404;
-        request.response.headers.contentType = ContentType.html;
-        request.response.write("<h1>404 ERROR</h1>");
+        writeError(request, error.code, error.message);
       } else if (error is Redirect) {
         request.response.redirect(new Uri.http(request.uri.authority, error.uri));
       } else {
-        request.response.statusCode = 500;
-        request.response.headers.contentType = ContentType.html;
-        request.response.write("<h1>500 ERROR</h1>");
+        writeError(request, HttpStatus.internalServerError, 'unknown error occured');
         print(error.toString());
+        print('STACK');
         print(stackTrace.toString());
-
+        //TODO if developer mode:
         //request.response.write("<pre>${new HtmlEscape().convert()}</pre>");
         //request.response.write("<pre>${new HtmlEscape().convert(stackTrace.toString())}</pre>");
       }
     }
     request.response.close();
+    db.disconnect();
     print("${request.method} ${request.uri} ${request.response.statusCode} [${new DateTime.now().millisecondsSinceEpoch - start}ms]");
   }
 

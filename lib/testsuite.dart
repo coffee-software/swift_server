@@ -7,6 +7,11 @@ import 'dart:typed_data';
 
 import 'package:swift_server/server.dart';
 
+Future<MockResponse> getServerResponse(Server server, MockRequest request) async {
+  await server.handleRequest(request);
+  return request.response;
+}
+
 class MockHeaders extends HttpHeaders {
   @override
   List<String>? operator [](String name) {
@@ -138,7 +143,7 @@ class MockResponse extends StringBuffer implements HttpResponse {
 
   dynamic toJson() {
     if (this.headers.contentType != ContentType.json) {
-      throw new Exception('wrong content type');
+      throw new Exception('wrong content type: ${this.headers.contentType}');
     }
     return jsonDecode(this.toString());
   }
@@ -153,10 +158,21 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   @override
   Uri uri;
 
-  MockRequest(this.method, String path) :
-        uri = Uri(path:path),
-        super(new Stream.empty()) {
+  @override
+  HttpHeaders headers;
 
+  MockRequest.get(String path) :
+        method = "GET",
+        uri = Uri(path:path),
+        headers = MockHeaders(),
+        super(new Stream.empty()) {
+  }
+
+  MockRequest.post(String path, String body) :
+        method = "POST",
+        uri = Uri(path:path),
+        headers = MockHeaders(),
+        super(Stream.fromIterable(Uint8List.fromList(body.codeUnits).map((e) => Uint8List.fromList([e])))) {
   }
 
   @override
@@ -175,9 +191,6 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   // TODO: implement cookies
   List<Cookie> get cookies => throw UnimplementedError();
 
-  @override
-  // TODO: implement headers
-  HttpHeaders get headers => throw UnimplementedError();
 
   @override
   // TODO: implement persistentConnection
