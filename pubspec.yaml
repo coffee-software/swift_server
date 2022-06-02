@@ -1,6 +1,6 @@
 name: swift_server
 description: create simple microservices using swift_composer
-version: 0.0.1
+version: 0.1.0
 homepage: https://github.com/fsw/swift_server
 environment:
   sdk: ^2.14.0

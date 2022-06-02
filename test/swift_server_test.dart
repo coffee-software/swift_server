@@ -3,6 +3,7 @@ library swift_composer.test;
 import 'package:swift_server/server.dart';
 import 'package:test/test.dart';
 import '../bin/raw_server.dart' as raw_server;
+import '../bin/raw_daemon.dart' as raw_daemon;
 import 'package:swift_server/testsuite.dart';
 import 'package:path/path.dart' as path;
 
@@ -29,6 +30,30 @@ void main() {
       expect(response.statusCode, 404);
     });
 
+    test('database time settings', () async {
+      final pathToDirectory = path.dirname(Platform.script.toFilePath());
+      await raw_daemon.$om.daemon.config.load(pathToDirectory + '/config.yaml');
+      DateTime dbTime = await raw_daemon.$om.daemon.db.fetchOne('SELECT NOW()');
+      dbTime = raw_daemon.$om.daemon.db.fixTZ(dbTime);
+      DateTime systemTime = new DateTime.now();
+      expect(dbTime.difference(systemTime).inSeconds, 0);
+    });
+
+    test('daemon test', () async {
+      final pathToDirectory = path.dirname(Platform.script.toFilePath());
+      await raw_daemon.$om.daemon.config.load(pathToDirectory + '/config.yaml');
+      await raw_daemon.$om.daemon.step();
+      int serviceId = raw_daemon.$om.daemon.config.getRequired<int>('service_id');
+
+      var row = await raw_daemon.$om.daemon.db.fetchRow(
+          'SELECT * FROM run_jobs WHERE app_id = ? AND job = ?',
+          [ serviceId, 'Ticker' ]
+      );
+      DateTime daemonLastRun = raw_daemon.$om.daemon.db.fixTZ(row!['last_run']);
+      expect(new DateTime.now().difference(daemonLastRun).inSeconds < 65, true);
+      await raw_daemon.$om.daemon.db.disconnect();
+    });
+
     test('status', () async {
       final pathToDirectory = path.dirname(Platform.script.toFilePath());
       await raw_server.$om.server.config.load(pathToDirectory + '/config.yaml');
@@ -37,6 +62,7 @@ void main() {
           MockRequest.get('/status.json')
       );
       expect(response.statusCode, 200);
+      print(response.toJson());
       Map <String, dynamic> ret = response.toJson();
       expect(ret['healthy'], true);
       await raw_server.$om.server.db.disconnect();

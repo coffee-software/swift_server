@@ -15,6 +15,7 @@ import 'package:args/args.dart';
 export 'builtin_actions.dart';
 
 const PostArg = true;
+const GetArg = true;
 const PathArg = true;
 
 /**
@@ -64,6 +65,19 @@ abstract class HttpAction {
     field = (json.containsKey(name) ? new List.from(json[name]) : null);
   }
 
+  @Compile
+
+  void setGetArgs(Map<String, String> queryParameters);
+
+  @CompileFieldsOfType
+  @AnnotatedWith(GetArg)
+  void _setGetArgsStringRequired(Map<String, String> queryParameters, String name, String field) {
+    if (!queryParameters.containsKey(name)) {
+      throw new HttpException(422, 'Missing required parameter ' + name);
+    }
+    field = queryParameters[name]!;
+  }
+
   Future handleRequest();
 }
 
@@ -98,6 +112,7 @@ abstract class JsonAction extends HttpAction {
       }
     }
     setPostArgs(postArgs);
+    setGetArgs(request.uri.queryParameters);
 
     String ret = json.encode(await this.run());
 
@@ -262,9 +277,9 @@ abstract class Db {
               password: config.getRequired<String>('database.password')
           )
       );
+      //temporary fix for new mysql version
+      await Future.delayed(Duration(milliseconds: 1));
     }
-    //temporary fix for new mysql version
-    await Future.delayed(Duration(milliseconds: 1000));
     return connection!;
   }
 
@@ -273,6 +288,13 @@ abstract class Db {
       await connection!.close();
       connection = null;
     }
+  }
+
+  DateTime fixTZ(DateTime dbDate) {
+    //fix for datetime beeing forced to utc
+    return new DateTime.fromMillisecondsSinceEpoch(dbDate
+        .subtract(new DateTime.now().timeZoneOffset)
+        .millisecondsSinceEpoch);
   }
 
   Future<IterableBase<ResultRow>> fetchRows(String sql, [List<Object?>? values]) async {
@@ -316,7 +338,6 @@ abstract class Server {
   String get datadir => config.getRequired<String>('datadir');
   int get port => args.port ?? config.getRequired<int>('port');
 
-
   Future serve(List<String> arguments) async {
     args.parse(arguments);
     print("starting HTTP server...");
@@ -351,6 +372,7 @@ abstract class Server {
       } else {
         writeError(request, HttpStatus.internalServerError, 'unknown error occured');
         print(error.toString());
+        print('STACK');
         print(stackTrace.toString());
         //TODO if developer mode:
         //request.response.write("<pre>${new HtmlEscape().convert()}</pre>");

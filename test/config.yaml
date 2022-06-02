@@ -6,3 +6,4 @@ database:
   database: swift_test
   user: swift_test
   password: swift_test
+service_id: 1

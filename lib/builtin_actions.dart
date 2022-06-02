@@ -11,7 +11,19 @@ abstract class StatusAction extends JsonAction {
   Future<dynamic> run() async
   {
     var healthChecks = {
-      'db' : () async => await server.db.fetchOne('SELECT 1') == 1
+      'db' : () async => await server.db.fetchOne('SELECT 1') == 1,
+      'daemon' : () async {
+        int serviceId = server.config.getRequired<int>('service_id');
+        var lastRun = await server.db.fetchOne(
+            'SELECT last_run FROM run_jobs WHERE app_id = ? AND job = ?',
+            [ serviceId, 'Ticker' ]
+        );
+        if (lastRun == null) {
+          return false;
+        }
+        DateTime daemonLastRun = server.db.fixTZ(lastRun);
+        return new DateTime.now().difference(daemonLastRun).inSeconds < 65;
+      }
     };
 
     Map<String, bool> checks = {};
