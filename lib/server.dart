@@ -96,6 +96,7 @@ class HttpException implements Exception {
 abstract class JsonAction extends HttpAction {
 
   String? ext = 'json';
+  int responseStatus = HttpStatus.ok;
 
   Future prapareData() async {}
   Future run();
@@ -114,9 +115,10 @@ abstract class JsonAction extends HttpAction {
     setPostArgs(postArgs);
     setGetArgs(request.uri.queryParameters);
 
+    responseStatus = HttpStatus.ok;
     String ret = json.encode(await this.run());
 
-    request.response.statusCode = 200;
+    request.response.statusCode = responseStatus;
     request.response.headers.contentType = ContentType.json;
     request.response.write(ret);
   }
@@ -215,19 +217,36 @@ class ServerConfig {
     data = loadYaml(await new File(path).readAsString());
   }
 
-  T getRequired<T>(String code) {
+  T _get<T>(String code, bool required, T? defaultValue) {
     List<String> path = code.split('.');
     Map ret = data;
     for (int i=0; i < path.length - 1; i++) {
       if (!ret.containsKey(path[i])) {
-        throw new Exception('missing required config value: ${path[i]}');
+        if (required) {
+          throw new Exception('missing required config value: ${path[i]}');
+        } else {
+          return defaultValue!;
+        }
       }
       ret = ret[path[i]];
     }
     if (!ret.containsKey(path.last)) {
-      throw new Exception('missing required config value: ${path.last}');
+      if (required) {
+        throw new Exception('missing required config value: ${path.last}');
+      } else {
+        return defaultValue!;
+      }
     }
     return ret[path.last];
+
+  }
+
+  T getRequired<T>(String code) {
+    return _get<T>(code, true, null);
+  }
+
+  T getOptional<T>(String code, T defaultValue) {
+    return _get<T>(code, false, defaultValue);
   }
 }
 

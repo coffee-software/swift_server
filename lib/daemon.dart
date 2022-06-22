@@ -1,5 +1,6 @@
 library c7server;
 
+import 'package:args/args.dart';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/server.dart';
 export 'package:swift_server/server.dart';
@@ -33,6 +34,27 @@ abstract class Ticker extends Job {
   }
 }
 
+@Compose
+abstract class DaemonArgs {
+
+  ArgResults? args;
+
+  parse(List<String> arguments) {
+    var parser = ArgParser();
+    parser.addOption('config');
+    parser.addOption('run');
+    this.args = parser.parse(arguments);
+  }
+
+  String? get runSingleJob {
+    return this.args?['run'];
+  }
+
+  String get configPath {
+    return this.args!['config'];
+  }
+
+}
 
 /**
  * Daemon process handler
@@ -43,13 +65,32 @@ abstract class Daemon {
   Db get db;
 
   @Inject
-  ServerArgs get args;
+  DaemonArgs get args;
 
   @Inject
   ServerConfig get config;
 
   @InjectInstances
   Map<String, Job> get allJobs;
+
+  Future runJob(String key) async {
+    var job = allJobs[key]!;
+    int serviceId = config.getRequired<int>('service_id');
+
+    print('RUN JOB $key');
+    try {
+      await job.run();
+    } catch (error, stackTrace) {
+      print('JOB $key: $error');
+    }
+    await db.query(
+        'INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()',
+        [
+          serviceId,
+          key
+        ]
+    );
+  }
 
   Future step() async {
     int serviceId = config.getRequired<int>('service_id');
@@ -62,19 +103,10 @@ abstract class Daemon {
             'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
             [serviceId, key]);
       }
+      //print('JOB $key ${now.difference(job.lastStart!).inMinutes}');
 
-      if (job.lastStart == null || now.difference(job.lastStart!).inMinutes >= job.minuteInterval) {
-        print('RUN JOB $key');
-        job.lastStart = now;
-        await job.run();
-        await db.query(
-            'INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=?',
-            [
-              serviceId,
-              key,
-              job.lastStart
-            ]
-        );
+      if ((job.lastStart == null) || (now.difference(job.lastStart!).inMinutes >= job.minuteInterval)) {
+        await runJob(key);
       }
     }
     await db.disconnect();
@@ -82,13 +114,25 @@ abstract class Daemon {
   }
 
   Future run(List<String> arguments) async {
-
     args.parse(arguments);
-    print("starting daemon...");
     await config.load(args.configPath);
-    while(true) {
-      step();
-      await Future.delayed(Duration(milliseconds: 500));
+    if (args.runSingleJob != null) {
+      if (allJobs.containsKey(args.runSingleJob)) {
+        var job = allJobs[args.runSingleJob]!;
+        job.lastStart = await db.fetchOne('SELECT NOW()');
+        await runJob(args.runSingleJob!);
+        await db.disconnect();
+        print('DONE');
+      } else {
+        print("unknown job ${args.runSingleJob}");
+        print("available jobs ${allJobs.keys}");
+      }
+    } else {
+      print("starting daemon...");
+      while(true) {
+        step();
+        await Future.delayed(Duration(milliseconds: 5000));
+      }
     }
   }
 }

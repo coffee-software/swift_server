@@ -1,43 +1,64 @@
 
 import 'server.dart';
 
+@ComposeSubtypes
+abstract class StatusActionCheck {
 
+  @Inject
+  Server get server;
+
+  Future<Map<String,bool>> check();
+}
+
+abstract class StatusActionDbCheck extends StatusActionCheck {
+  Future<Map<String,bool>> check() async {
+    return {'database' : await server.db.fetchOne('SELECT 1') == 1};
+  }
+}
+
+abstract class StatusActionTickerCheck extends StatusActionCheck {
+  Future<Map<String,bool>> check() async {
+    int serviceId = server.config.getRequired<int>('service_id');
+    var lastRun = await server.db.fetchOne(
+        'SELECT last_run FROM run_jobs WHERE app_id = ? AND job = ?',
+        [ serviceId, 'Ticker' ]
+    );
+    var ret = false;
+    if (lastRun != null) {
+      DateTime daemonLastRun = server.db.fixTZ(lastRun);
+      ret = new DateTime.now().difference(daemonLastRun).inSeconds < 65;
+    }
+    return {'ticker' : ret};
+  }
+}
 
 /**
  * Status Action
  */
 abstract class StatusAction extends JsonAction {
 
+
+  @InjectInstances
+  Map<String, StatusActionCheck> get allChecks;
+
   Future<dynamic> run() async
   {
-    var healthChecks = {
-      'db' : () async => await server.db.fetchOne('SELECT 1') == 1,
-      'daemon' : () async {
-        int serviceId = server.config.getRequired<int>('service_id');
-        var lastRun = await server.db.fetchOne(
-            'SELECT last_run FROM run_jobs WHERE app_id = ? AND job = ?',
-            [ serviceId, 'Ticker' ]
-        );
-        if (lastRun == null) {
-          return false;
-        }
-        DateTime daemonLastRun = server.db.fixTZ(lastRun);
-        return new DateTime.now().difference(daemonLastRun).inSeconds < 65;
-      }
-    };
-
     Map<String, bool> checks = {};
-    for (var key in healthChecks.keys) {
+    for (var key in allChecks.keys) {
       try {
-        checks[key] = await healthChecks[key]!();
+        checks.addAll(await allChecks[key]!.check());
       } catch (e) {
         checks[key] = false;
       }
     }
 
+    var healthy = checks.values.reduce((a, b) => a && b);
+    if (!healthy) {
+      this.responseStatus = HttpStatus.serviceUnavailable;
+    }
     return {
       'time': DateTime.now().toString(),
-      'healthy': checks.values.reduce((a, b) => a && b),
+      'healthy': healthy,
       'checks': checks
     };
   }
