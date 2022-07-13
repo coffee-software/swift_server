@@ -2,8 +2,12 @@ library c7server;
 
 import 'package:args/args.dart';
 import 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/server.dart';
-export 'package:swift_server/server.dart';
+export 'package:swift_composer/swift_composer.dart';
+import 'package:swift_server/config.dart';
+export 'package:swift_server/config.dart';
+
+import 'tools.dart';
+export 'tools.dart';
 
 /**
  * Single Cron Job
@@ -63,6 +67,9 @@ abstract class DaemonArgs {
 abstract class Daemon {
   @Inject
   Db get db;
+
+  @Inject
+  Net get net;
 
   @Inject
   DaemonArgs get args;

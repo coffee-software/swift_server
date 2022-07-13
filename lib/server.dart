@@ -1,17 +1,18 @@
 library c7server;
 
-import 'dart:collection';
 import 'dart:io';
 export 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'package:mysql1/mysql1.dart';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/http_status_codes.dart';
 export 'package:swift_composer/swift_composer.dart';
-import 'package:yaml/yaml.dart';
 import 'package:args/args.dart';
 
+import 'config.dart';
+export 'config.dart';
+import 'tools.dart';
+export 'tools.dart';
 export 'builtin_actions.dart';
 
 const PostArg = true;
@@ -76,6 +77,15 @@ abstract class HttpAction {
       throw new HttpException(422, 'Missing required parameter ' + name);
     }
     field = queryParameters[name]!;
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(GetArg)
+  void _setGetArgsIntRequired(Map<String, String> queryParameters, String name, int field) {
+    if (!queryParameters.containsKey(name)) {
+      throw new HttpException(422, 'Missing required parameter ' + name);
+    }
+    field = int.parse(queryParameters[name]!);
   }
 
   Future handleRequest();
@@ -204,52 +214,6 @@ abstract class Router {
 
 }
 
-/**
- * Server Configuration Reader
- */
-@Compose
-class ServerConfig {
-
-  @Create
-  late Map data;
-
-  load(String path) async {
-    data = loadYaml(await new File(path).readAsString());
-  }
-
-  T _get<T>(String code, bool required, T? defaultValue) {
-    List<String> path = code.split('.');
-    Map ret = data;
-    for (int i=0; i < path.length - 1; i++) {
-      if (!ret.containsKey(path[i])) {
-        if (required) {
-          throw new Exception('missing required config value: ${path[i]}');
-        } else {
-          return defaultValue!;
-        }
-      }
-      ret = ret[path[i]];
-    }
-    if (!ret.containsKey(path.last)) {
-      if (required) {
-        throw new Exception('missing required config value: ${path.last}');
-      } else {
-        return defaultValue!;
-      }
-    }
-    return ret[path.last];
-
-  }
-
-  T getRequired<T>(String code) {
-    return _get<T>(code, true, null);
-  }
-
-  T getOptional<T>(String code, T defaultValue) {
-    return _get<T>(code, false, defaultValue);
-  }
-}
-
 @Compose
 abstract class ServerArgs {
 
@@ -273,69 +237,6 @@ abstract class ServerArgs {
 
   String get configPath {
     return this.args!['config'];
-  }
-
-}
-
-@Compose
-abstract class Db {
-
-  @Inject
-  ServerConfig get config;
-
-  MySqlConnection? connection;
-
-  Future<MySqlConnection> getConnection() async {
-    if (connection == null) {
-      connection = await MySqlConnection.connect(
-          ConnectionSettings(
-              host: config.getRequired<String>('database.host'),
-              port: config.getRequired<int>('database.port'),
-              user: config.getRequired<String>('database.user'),
-              db: config.getRequired<String>('database.database'),
-              password: config.getRequired<String>('database.password')
-          )
-      );
-      //temporary fix for new mysql version
-      await Future.delayed(Duration(milliseconds: 1));
-    }
-    return connection!;
-  }
-
-  Future<void> disconnect() async {
-    if (connection != null) {
-      await connection!.close();
-      connection = null;
-    }
-  }
-
-  DateTime fixTZ(DateTime dbDate) {
-    //fix for datetime beeing forced to utc
-    return new DateTime.fromMillisecondsSinceEpoch(dbDate
-        .subtract(new DateTime.now().timeZoneOffset)
-        .millisecondsSinceEpoch);
-  }
-
-  Future<IterableBase<ResultRow>> fetchRows(String sql, [List<Object?>? values]) async {
-    return await (await this.getConnection()).query(sql, values);
-  }
-
-  Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
-    for (var row in await (await this.getConnection()).query(sql, values)) {
-      return row.fields;
-    }
-    return null;
-  }
-
-  dynamic fetchOne(String sql, [List<Object?>? values]) async {
-    for (var row in await (await this.getConnection()).query(sql, values)) {
-      return row[0];
-    }
-    return null;
-  }
-
-  Future<void> query(String sql, [List<Object?>? values]) async {
-    await (await this.getConnection()).query(sql, values);
   }
 
 }
