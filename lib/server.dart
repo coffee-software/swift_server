@@ -163,7 +163,7 @@ class RouteNode {
  * Routing Handler
  */
 @Compose
-abstract class Router {
+abstract class Router implements Pluggable {
 
   @SubtypeFactory
   HttpAction createAction(String className/*, HttpRequest request*/);
@@ -179,7 +179,7 @@ abstract class Router {
       allActions.keys.forEach((element) {
         String name = element;
         if (name.startsWith('module_')) {
-          name = name.substring(6);
+          name = name.substring(7);
         }
         if (name.endsWith('Action')) {
           name = name.substring(0, name.length - 6);
