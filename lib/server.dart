@@ -15,6 +15,8 @@ import 'tools.dart';
 export 'tools.dart';
 export 'builtin_actions.dart';
 
+export 'queues.dart';
+
 const PostArg = true;
 const GetArg = true;
 const PathArg = true;
@@ -41,9 +43,9 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
-  void _setPostArgsStringRequired(Map json, String name, var field) {
+  void _setPostArgsStringRequired(Map json, String name, String field) {
     if (!json.containsKey(name)) {
-      throw new HttpException(422, 'Missing required parameter ' + name);
+      throw new HttpRequestException('Missing required parameter ' + name);
     }
     field = json[name];
   }
@@ -62,7 +64,16 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
-  void _setPostArgsList(Map json, String name, List? field) {
+  void _setPostArgsListRequired(Map json, String name, List field) {
+    if (!json.containsKey(name)) {
+      throw new HttpRequestException('Missing required parameter ' + name);
+    }
+    field = new List.from(json[name]!);
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(PostArg)
+  void _setPostArgsListOptional(Map json, String name, List? field) {
     field = (json.containsKey(name) ? new List.from(json[name]) : null);
   }
 
@@ -74,7 +85,7 @@ abstract class HttpAction {
   @AnnotatedWith(GetArg)
   void _setGetArgsStringRequired(Map<String, String> queryParameters, String name, String field) {
     if (!queryParameters.containsKey(name)) {
-      throw new HttpException(422, 'Missing required parameter ' + name);
+      throw new HttpRequestException('Missing required parameter ' + name);
     }
     field = queryParameters[name]!;
   }
@@ -83,7 +94,7 @@ abstract class HttpAction {
   @AnnotatedWith(GetArg)
   void _setGetArgsIntRequired(Map<String, String> queryParameters, String name, int field) {
     if (!queryParameters.containsKey(name)) {
-      throw new HttpException(422, 'Missing required parameter ' + name);
+      throw new HttpRequestException('Missing required parameter ' + name);
     }
     field = int.parse(queryParameters[name]!);
   }
@@ -102,6 +113,10 @@ class HttpException implements Exception {
   HttpException(this.code, this.message);
 }
 
+class HttpRequestException extends HttpException {
+  HttpRequestException(String message) : super(HttpStatus.unprocessableEntity, message);
+}
+
 @ComposeSubtypes
 abstract class JsonAction extends HttpAction {
 
@@ -111,8 +126,7 @@ abstract class JsonAction extends HttpAction {
   Future prapareData() async {}
   Future run();
 
-  Future handleRequest() async
-  {
+  Future prepareArguments() async {
     String body = await utf8.decoder.bind(request).join('');
     //String method = request.uri.pathSegments.length > 1 ? request.uri.pathSegments[1] : 'index';
     Map postArgs = {};
@@ -124,7 +138,10 @@ abstract class JsonAction extends HttpAction {
     }
     setPostArgs(postArgs);
     setGetArgs(request.uri.queryParameters);
+  }
 
+  Future handleRequest() async {
+    await prepareArguments();
     responseStatus = HttpStatus.ok;
     String ret = json.encode(await this.run());
 

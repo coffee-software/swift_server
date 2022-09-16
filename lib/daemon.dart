@@ -1,6 +1,9 @@
 library c7server;
 
+import 'dart:convert';
+
 import 'package:args/args.dart';
+import 'package:dart_amqp/dart_amqp.dart' as amqp;
 import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
@@ -8,6 +11,9 @@ export 'package:swift_server/config.dart';
 
 import 'tools.dart';
 export 'tools.dart';
+
+import 'queues.dart';
+export 'queues.dart';
 
 /**
  * Single Cron Job
@@ -80,6 +86,9 @@ abstract class Daemon {
   @InjectInstances
   Map<String, Job> get allJobs;
 
+  @InjectInstances
+  Map<String, Queue> get allQueues;
+
   Future runJob(String key) async {
     var job = allJobs[key]!;
     int serviceId = config.getRequired<int>('service_id');
@@ -136,9 +145,32 @@ abstract class Daemon {
       }
     } else {
       print("starting daemon...");
-      while(true) {
-        step();
-        await Future.delayed(Duration(milliseconds: 5000));
+      if (allJobs.length > 1 && allQueues.isNotEmpty) {
+        throw new Exception('TODO: daemon for jobs and queues');
+      }
+      if (allJobs.length > 1) {
+        while (true) {
+          step();
+          await Future.delayed(Duration(milliseconds: 5000));
+        }
+      } else {
+        amqp.ConnectionSettings settings = amqp.ConnectionSettings(
+            host: config.getRequired<String>('amqp.host'),
+            port: config.getRequired<int>('amqp.port')
+        );
+        print(allQueues.keys);
+        for (var key in allQueues.keys) {
+          var queue = allQueues[key]!;
+          print('TODO isolates');
+          amqp.Client client = new amqp.Client(settings: settings);
+          amqp.Channel channel = await client.channel();
+          amqp.Queue amqpQueue = await channel.queue(queue.className);
+          amqp.Consumer consumer = await amqpQueue.consume();
+
+          consumer.listen((amqp.AmqpMessage message) {
+            queue.processMessage(json.decode(message.payloadAsString));
+          });
+        }
       }
     }
   }
