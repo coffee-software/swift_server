@@ -66,8 +66,8 @@ abstract class Db {
     return null;
   }
 
-  Future<void> query(String sql, [List<Object?>? values]) async {
-    await (await this.getConnection()).query(sql, values);
+  Future<Results> query(String sql, [List<Object?>? values]) async {
+    return await (await this.getConnection()).query(sql, values);
   }
 
 }

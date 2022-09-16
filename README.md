@@ -1,17 +1,17 @@
 # swift_server
 
-Simple Micro Service Framework
+Simple Micro Service Framework using swift_composer
 
 ## Development Info
 
 Running raw server:
 
 ```
-pub run build_runner build && dart bin/raw_server.dart --config test/config.yaml
+dart run build_runner build && dart bin/raw_server.dart --config test/config.yaml
 ```
 
 Running tests:
 
 ```
-pub run build_runner build && dart test/swift_server_test.dart
+dart run build_runner build && dart test/swift_server_test.dart
 ```
