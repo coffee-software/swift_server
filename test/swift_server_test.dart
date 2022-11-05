@@ -4,10 +4,23 @@ import 'package:swift_server/server.dart';
 import 'package:test/test.dart';
 import '../bin/raw_server.dart' as raw_server;
 import '../bin/raw_daemon.dart' as raw_daemon;
+import '../bin/raw_cli.dart' as raw_cli;
 import 'package:swift_server/testsuite.dart';
 import 'package:path/path.dart' as path;
 
-void main() {
+
+String testConfigPath() {
+  return path.dirname(Platform.script.toFilePath()) + '/config.yaml';
+}
+
+Future loadConfig() async {
+  await raw_server.$om.server.config.load(testConfigPath());
+  await raw_daemon.$om.daemon.config.load(testConfigPath());
+}
+
+void main() async {
+  await loadConfig();
+
     test('routing', () async {
       var response = await getServerResponse(
           raw_server.$om.server,
@@ -31,17 +44,13 @@ void main() {
     });
 
     test('database time settings', () async {
-      final pathToDirectory = path.dirname(Platform.script.toFilePath());
-      await raw_daemon.$om.daemon.config.load(pathToDirectory + '/config.yaml');
       DateTime dbTime = await raw_daemon.$om.daemon.db.fetchOne('SELECT NOW()');
       dbTime = raw_daemon.$om.daemon.db.fixTZ(dbTime);
       DateTime systemTime = new DateTime.now();
       expect(dbTime.difference(systemTime).inSeconds, 0);
     });
 
-    test('daemon test', () async {
-      final pathToDirectory = path.dirname(Platform.script.toFilePath());
-      await raw_daemon.$om.daemon.config.load(pathToDirectory + '/config.yaml');
+    test('daemon jobs test', () async {
       await raw_daemon.$om.daemon.step();
       int serviceId = raw_daemon.$om.daemon.config.getRequired<int>('service_id');
 
@@ -54,9 +63,30 @@ void main() {
       await raw_daemon.$om.daemon.db.disconnect();
     });
 
+    test('daemon queues test', () async {
+      await raw_daemon.$om.daemon.processQueuesIsolate();
+      int serviceId = raw_daemon.$om.daemon.config.getRequired<int>('service_id');
+
+      raw_daemon.$om.daemon.allQueueProcessors['TestQueue1Processor']!.queue.postMessage(666);
+
+      await Future.delayed(Duration(milliseconds: 500));
+
+      var row = await raw_daemon.$om.daemon.db.fetchRow(
+          'SELECT * FROM run_queues WHERE app_id = ? AND queue = ?',
+          [ serviceId, 'TestQueue1' ]
+      );
+      DateTime lastProcess = raw_daemon.$om.daemon.db.fixTZ(row!['last_process']);
+      expect(new DateTime.now().difference(lastProcess).inSeconds < 5, true);
+      await raw_daemon.$om.daemon.finishQueuesIsolate();
+
+      await raw_daemon.$om.daemon.db.disconnect();
+    });
+
+    test('daemon CLI test', () async {
+      await raw_cli.$om.cli.run(['TestCommand', '--config', testConfigPath(), '--testArg', 'TEST_ARG']);
+    });
+
     test('status', () async {
-      final pathToDirectory = path.dirname(Platform.script.toFilePath());
-      await raw_server.$om.server.config.load(pathToDirectory + '/config.yaml');
       var response = await getServerResponse(
           raw_server.$om.server,
           MockRequest.get('/status.json')

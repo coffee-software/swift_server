@@ -8,15 +8,13 @@ import 'package:swift_server/tools.dart';
 @ComposeSubtypes
 abstract class Queue<T> {
 
-
   @InjectClassName
   String get className;
 
   @Inject
   ServerConfig get config;
 
-  @Inject
-  Db get db;
+  String get queueName => className + '.' + config.getRequired<int>('service_id').toString();
 
   Future postMessage(T message) async {
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(
@@ -25,10 +23,25 @@ abstract class Queue<T> {
     );
     amqp.Client client = amqp.Client(settings: settings);
     amqp.Channel channel = await client.channel();
-    amqp.Queue queue = await channel.queue(className);
-    queue.publish(json.encode(message));
-    client.close();
+    amqp.Queue queue = await channel.queue(queueName);
+    queue.publish(jsonEncode(message));
+    await client.close();
   }
+}
+
+
+
+@ComposeSubtypes
+abstract class QueueProcessor<Q extends Queue, T> {
+
+  @Inject
+  Db get db;
+
+  @Inject
+  ServerConfig get config;
+
+  @Inject
+  Q get queue;
 
   Future processMessage(T message);
 }
