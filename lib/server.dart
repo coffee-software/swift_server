@@ -295,7 +295,10 @@ abstract class Server {
     }));
   }
 
+  int concurrentRequests = 0;
+
   Future handleRequest(HttpRequest request) async {
+    concurrentRequests ++;
     int start = new DateTime.now().millisecondsSinceEpoch;
     try {
 
@@ -317,7 +320,10 @@ abstract class Server {
       }
     }
     request.response.close();
-    db.disconnect();
+    concurrentRequests --;
+    if (concurrentRequests == 0) {
+      await db.disconnect();
+    }
     print("${request.method} ${request.uri} ${request.response.statusCode} [${new DateTime.now().millisecondsSinceEpoch - start}ms]");
   }
 
