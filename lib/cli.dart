@@ -1,6 +1,8 @@
 library c7server;
 
 import 'package:args/args.dart';
+export 'package:args/args.dart';
+
 import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
@@ -8,6 +10,8 @@ export 'package:swift_server/config.dart';
 
 import 'tools.dart';
 export 'tools.dart';
+
+const CliArg = true;
 
 /**
  * Single Command
@@ -21,23 +25,23 @@ abstract class Command {
   Cli get cli;
 
   Future run();
-}
 
-@Compose
-abstract class CliArgs {
+  @Compile
+  void setCliArgs(ArgResults args);
 
-  ArgResults? args;
-
-  parse(List<String> arguments) {
-    var parser = ArgParser();
-    parser.addOption('config');
-    this.args = parser.parse(arguments);
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  void _setCliArgsStringRequired(ArgResults args, String name, String field) {
+    field = args[name];
   }
 
-  String get commandName => this.args!.rest[0];
+  @Compile
+  void configureCliArgs(ArgParser parser);
 
-  String get configPath {
-    return this.args!['config'];
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  void _configureCliArgsStringRequired(ArgParser parser, String name, String field) {
+    parser.addOption(name, mandatory:true);
   }
 
 }
@@ -54,24 +58,26 @@ abstract class Cli {
   Net get net;
 
   @Inject
-  CliArgs get args;
-
-  @Inject
   ServerConfig get config;
 
   @InjectInstances
   Map<String, Command> get allCommands;
 
   Future run(List<String> arguments) async {
-    args.parse(arguments);
-    await config.load(args.configPath);
-    if (!allCommands.containsKey(args.commandName)) {
+    if (arguments.length < 1 || !allCommands.containsKey(arguments[0])) {
       allCommands.forEach((key, value) {
         print(key);
       });
-      throw new Exception('unknown command ' + args.commandName);
+      throw new Exception('unknown command');
     }
-    var command = allCommands[args.commandName]!;
+    var command = allCommands[arguments[0]]!;
+
+    var parser = ArgParser();
+    parser.addOption('config', mandatory:true);
+    command.configureCliArgs(parser);
+    ArgResults args = parser.parse(arguments);
+    await config.load(args['config']);
+    command.setCliArgs(args);
     await command.run();
     await db.disconnect();
   }
