@@ -8,12 +8,15 @@ import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 export 'package:swift_server/config.dart';
+import 'package:swift_server/error_handler.dart';
+export 'package:swift_server/error_handler.dart';
 
 import 'tools.dart';
 export 'tools.dart';
 
 import 'queues.dart';
 export 'queues.dart';
+
 
 /**
  * Single Cron Job
@@ -83,11 +86,14 @@ abstract class Daemon {
   @Inject
   ServerConfig get config;
 
+  @Inject
+  ErrorHandler get errorHandler;
+
   @InjectInstances
   Map<String, Job> get allJobs;
 
   @InjectInstances
-  Map<String, Queue> get allQueues;
+  Map<String, QueueProcessor> get allQueueProcessors;
 
   Future runJob(String key) async {
     var job = allJobs[key]!;
@@ -96,8 +102,8 @@ abstract class Daemon {
     print('RUN JOB $key');
     try {
       await job.run();
-    } catch (error, stackTrace) {
-      print('JOB $key: $error');
+    } catch (error, stacktrace) {
+      await errorHandler.handleError(serviceId, 'job.' + key, error, stacktrace);
     }
     await db.query(
         'INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()',
@@ -119,14 +125,63 @@ abstract class Daemon {
             'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
             [serviceId, key]);
       }
-      //print('JOB $key ${now.difference(job.lastStart!).inMinutes}');
-
       if ((job.lastStart == null) || (now.difference(job.lastStart!).inMinutes >= job.minuteInterval)) {
         await runJob(key);
       }
     }
     await db.disconnect();
 
+  }
+
+  void processJobsIsolate() async {
+    print("start processing jobs(${allJobs.length}).");
+    while (true) {
+      step();
+      await Future.delayed(Duration(milliseconds: 5000));
+    }
+  }
+
+  amqp.Client? amqpClient = null;
+  List<amqp.Consumer> amqpConsumers = [];
+
+  Future finishQueuesIsolate() async {
+    if (amqpClient != null) {
+      for (var consumer in amqpConsumers) {
+        await consumer.cancel();
+      };
+      await amqpClient!.close();
+    }
+  }
+
+  Future processQueuesIsolate() async {
+    print("preparing queues(${allQueueProcessors.length}).");
+    amqp.ConnectionSettings settings = amqp.ConnectionSettings(
+        host: config.getRequired<String>('amqp.host'),
+        port: config.getRequired<int>('amqp.port')
+    );
+    amqpClient = new amqp.Client(settings: settings);
+    amqp.Channel channel = await amqpClient!.channel();
+    int serviceId = config.getRequired<int>('service_id');
+    for (var processor in allQueueProcessors.values) {
+        amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
+        amqp.Consumer consumer = await amqpQueue.consume();
+        amqpConsumers.add(consumer);
+        await consumer.listen((amqp.AmqpMessage message) async {
+          try {
+            var decodedMessage = json.decode(message.payloadAsString);
+            await processor.processMessage(decodedMessage);
+          } catch (error, stacktrace) {
+            await errorHandler.handleError(serviceId, 'queue.' + processor.queue.className, error, stacktrace);
+          }
+          await db.query(
+              'INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()',
+              [
+                serviceId,
+                processor.queue.className
+              ]
+          );
+        });
+    }
   }
 
   Future run(List<String> arguments) async {
@@ -145,32 +200,18 @@ abstract class Daemon {
       }
     } else {
       print("starting daemon...");
-      if (allJobs.length > 1 && allQueues.isNotEmpty) {
-        throw new Exception('TODO: daemon for jobs and queues');
-      }
-      if (allJobs.length > 1) {
-        while (true) {
-          step();
-          await Future.delayed(Duration(milliseconds: 5000));
-        }
-      } else {
-        amqp.ConnectionSettings settings = amqp.ConnectionSettings(
-            host: config.getRequired<String>('amqp.host'),
-            port: config.getRequired<int>('amqp.port')
-        );
-        print(allQueues.keys);
-        for (var key in allQueues.keys) {
-          var queue = allQueues[key]!;
-          print('TODO isolates');
-          amqp.Client client = new amqp.Client(settings: settings);
-          amqp.Channel channel = await client.channel();
-          amqp.Queue amqpQueue = await channel.queue(queue.className);
-          amqp.Consumer consumer = await amqpQueue.consume();
 
-          consumer.listen((amqp.AmqpMessage message) {
-            queue.processMessage(json.decode(message.payloadAsString));
-          });
-        }
+      if (allQueueProcessors.isNotEmpty) {
+        await processQueuesIsolate();
+        //TODO separate isolates per queue?
+        /*await Isolate.spawn(
+          processQueuesIsolate,
+          new DaemonIsolateArgs(receivePort.sendPort, this.config),
+        );*/
+      }
+
+      if (allJobs.isNotEmpty) {
+        processJobsIsolate();
       }
     }
   }

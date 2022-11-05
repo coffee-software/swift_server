@@ -1,0 +1,6 @@
+targets:
+  $default:
+    builders:
+      swift_composer:swift_composer:
+        options:
+          debug: false

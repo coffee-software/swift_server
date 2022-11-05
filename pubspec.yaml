@@ -14,3 +14,6 @@ dev_dependencies:
   test: any
   path: any
   build_runner: any
+#dependency_overrides:
+#  swift_composer:
+#    path: ../swift_composer

@@ -5,8 +5,10 @@ export 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/http_status_codes.dart';
 export 'package:swift_composer/swift_composer.dart';
+import 'package:swift_server/error_handler.dart';
+export 'package:swift_server/error_handler.dart';
+import 'package:swift_server/http_status_codes.dart';
 import 'package:args/args.dart';
 
 import 'config.dart';
@@ -271,6 +273,8 @@ abstract class Server {
   ServerArgs get args;
   @Inject
   Db get db;
+  @Inject
+  ErrorHandler get errorHandler;
 
   String get datadir => config.getRequired<String>('datadir');
   int get port => args.port ?? config.getRequired<int>('port');
@@ -285,14 +289,19 @@ abstract class Server {
     server.listen(handleRequest);
   }
 
-  void writeError(HttpRequest request, int code, String message) {
+  void writeError(HttpRequest request, int code, String message, StackTrace trace) {
     //TODO depend on request accepted header
     request.response.statusCode = code;
     request.response.headers.contentType = ContentType.json;
-    request.response.write(json.encode({
-      'error':  "${code} ${httpStatusMessage[code]!}",
+
+    var json = {
+      'error': "${code} ${httpStatusMessage[code]!}",
       'message': message
-    }));
+    };
+    if (config.getRequired<bool>('debug')) {
+      json['trace'] = trace.toString();
+    }
+    request.response.write(jsonEncode(json));
   }
 
   int concurrentRequests = 0;
@@ -300,24 +309,24 @@ abstract class Server {
   Future handleRequest(HttpRequest request) async {
     concurrentRequests ++;
     int start = new DateTime.now().millisecondsSinceEpoch;
+    int serviceId = config.getRequired<int>('service_id');
+    String actionName = 'unknown';
     try {
-
-      await routing.getForRequest(request).handleRequest();
-
-    } catch (error, stackTrace) {
-      if (error is HttpException) {
-        writeError(request, error.code, error.message);
-      } else if (error is Redirect) {
-        request.response.redirect(new Uri.http(request.uri.authority, error.uri));
-      } else {
-        writeError(request, HttpStatus.internalServerError, 'unknown error occured');
-        print(error.toString());
-        print('STACK');
-        print(stackTrace.toString());
-        //TODO if developer mode:
-        //request.response.write("<pre>${new HtmlEscape().convert()}</pre>");
-        //request.response.write("<pre>${new HtmlEscape().convert(stackTrace.toString())}</pre>");
-      }
+      HttpAction action = routing.getForRequest(request);
+      actionName = action.className;
+      await action.handleRequest();
+    } on Redirect catch (error) {
+      request.response.redirect(new Uri.http(request.uri.authority, error.uri));
+    } on HttpException catch (error, stacktrace) {
+      writeError(request, error.code, error.message, stacktrace);
+    } catch (error, stacktrace) {
+      writeError(
+          request,
+          HttpStatus.internalServerError,
+          'unknown error occured',
+          stacktrace
+      );
+      await errorHandler.handleError(serviceId, 'action.' + actionName, error, stacktrace);
     }
     request.response.close();
     concurrentRequests --;
