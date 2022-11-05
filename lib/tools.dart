@@ -52,6 +52,14 @@ abstract class Db {
     return await (await this.getConnection()).query(sql, values);
   }
 
+  Future<List<T>> fetchCol<T>(String sql, [List<Object?>? values]) async {
+    List<T> ret = [];
+    for (var row in await (await this.getConnection()).query(sql, values)) {
+      ret.add(row[0]);
+    }
+    return ret;
+  }
+
   Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
     for (var row in await (await this.getConnection()).query(sql, values)) {
       return row.fields;
