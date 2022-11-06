@@ -1,3 +1,8 @@
+# 0.2.1
+
+* jobs bugfix
+* static and doc fixes
+
 # 0.2.0
 
 * update swift_composer 
