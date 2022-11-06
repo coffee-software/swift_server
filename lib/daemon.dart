@@ -102,8 +102,6 @@ abstract class Daemon {
   Future runJob(String key) async {
     var job = allJobs[key]!;
     int serviceId = config.getRequired<int>('service_id');
-
-    print('RUN JOB $key');
     int start = new DateTime.now().millisecondsSinceEpoch;
     try {
       await job.run();
@@ -170,11 +168,14 @@ abstract class Daemon {
     amqpClient = new amqp.Client(settings: settings);
     amqp.Channel channel = await amqpClient!.channel();
     int serviceId = config.getRequired<int>('service_id');
+    int concurrentProcessors = 0;
+    amqpConsumers = [];
     for (var processor in allQueueProcessors.values) {
         amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
         amqp.Consumer consumer = await amqpQueue.consume();
         amqpConsumers.add(consumer);
         await consumer.listen((amqp.AmqpMessage message) async {
+          concurrentProcessors ++;
           int start = new DateTime.now().millisecondsSinceEpoch;
           try {
             var decodedMessage = json.decode(message.payloadAsString);
@@ -191,6 +192,10 @@ abstract class Daemon {
           );
           int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
           await stats.saveStats(serviceId, 'queue.' + processor.queue.className, db.getAndResetCounter(), timeMs);
+          concurrentProcessors --;
+          if (concurrentProcessors == 0) {
+            await db.disconnect();
+          }
         });
     }
   }
