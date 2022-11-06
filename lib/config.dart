@@ -3,8 +3,6 @@ library c7server;
 import 'dart:io';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:yaml/yaml.dart';
-import 'package:mysql1/mysql1.dart';
-import 'dart:collection';
 
 /**
  * Server Configuration Reader

@@ -125,13 +125,13 @@ abstract class Daemon {
     DateTime now = await db.fetchOne('SELECT NOW()');
     for (var key in allJobs.keys) {
       var job = allJobs[key]!;
-
       if (job.lastStart == null) {
         job.lastStart = await db.fetchOne(
             'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
             [serviceId, key]);
       }
       if ((job.lastStart == null) || (now.difference(job.lastStart!).inMinutes >= job.minuteInterval)) {
+        job.lastStart = now;
         await runJob(key);
       }
     }

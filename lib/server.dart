@@ -48,6 +48,7 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
+  // ignore: unused_element
   void _setPostArgsStringRequired(Map json, String name, String field) {
     if (!json.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
@@ -57,18 +58,21 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
+  // ignore: unused_element
   void _setPostArgsStringOptional(Map json, String name, String? field) {
     field = (json.containsKey(name) ? json[name] : null);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
+  // ignore: unused_element
   void _setPostArgsMap(Map json, String name, Map? field) {
     field = (json.containsKey(name) ? json[name] : null);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
+  // ignore: unused_element
   void _setPostArgsListRequired(Map json, String name, List field) {
     if (!json.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
@@ -78,6 +82,7 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
+  // ignore: unused_element
   void _setPostArgsListOptional(Map json, String name, List? field) {
     field = (json.containsKey(name) ? new List.from(json[name]) : null);
   }
@@ -88,6 +93,7 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(GetArg)
+  // ignore: unused_element
   void _setGetArgsStringRequired(Map<String, String> queryParameters, String name, String field) {
     if (!queryParameters.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
@@ -97,6 +103,7 @@ abstract class HttpAction {
 
   @CompileFieldsOfType
   @AnnotatedWith(GetArg)
+  // ignore: unused_element
   void _setGetArgsIntRequired(Map<String, String> queryParameters, String name, int field) {
     if (!queryParameters.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);

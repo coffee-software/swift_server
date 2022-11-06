@@ -31,6 +31,7 @@ abstract class Command {
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
+  // ignore: unused_element
   void _setCliArgsStringRequired(ArgResults args, String name, String field) {
     field = args[name];
   }
@@ -40,6 +41,7 @@ abstract class Command {
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
+  // ignore: unused_element
   void _configureCliArgsStringRequired(ArgParser parser, String name, String field) {
     parser.addOption(name, mandatory:true);
   }
