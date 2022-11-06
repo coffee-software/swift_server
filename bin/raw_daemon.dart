@@ -20,8 +20,8 @@ abstract class TestJob extends Job {
   int minuteInterval = 1;
 
   Future run() async {
-    testQueue1.postMessage(7);
-    testQueue2.postMessage(8);
+    await testQueue1.postMessage(7);
+    await testQueue2.postMessage(8);
   }
 }
 

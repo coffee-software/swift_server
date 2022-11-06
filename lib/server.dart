@@ -6,17 +6,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/error_handler.dart';
-export 'package:swift_server/error_handler.dart';
-import 'package:swift_server/http_status_codes.dart';
+
+import 'http_status_codes.dart';
 import 'package:args/args.dart';
 
+import 'error_handler.dart';
+export 'error_handler.dart';
+import 'stats.dart';
+export 'stats.dart';
 import 'config.dart';
 export 'config.dart';
 import 'tools.dart';
 export 'tools.dart';
-export 'builtin_actions.dart';
 
+export 'builtin_actions.dart';
 export 'queues.dart';
 
 const PostArg = true;
@@ -275,6 +278,8 @@ abstract class Server {
   Db get db;
   @Inject
   ErrorHandler get errorHandler;
+  @Inject
+  Stats get stats;
 
   String get datadir => config.getRequired<String>('datadir');
   int get port => args.port ?? config.getRequired<int>('port');
@@ -291,6 +296,7 @@ abstract class Server {
 
   void writeError(HttpRequest request, int code, String message, StackTrace trace) {
     //TODO depend on request accepted header
+    //request.response.write("<pre>${new HtmlEscape().convert(stackTrace.toString())}</pre>");
     request.response.statusCode = code;
     request.response.headers.contentType = ContentType.json;
 
@@ -329,11 +335,16 @@ abstract class Server {
       await errorHandler.handleError(serviceId, 'action.' + actionName, error, stacktrace);
     }
     request.response.close();
+
+    int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+
+    await stats.saveStats(serviceId, 'action.' + actionName, db.getAndResetCounter(), timeMs);
+
     concurrentRequests --;
     if (concurrentRequests == 0) {
       await db.disconnect();
     }
-    print("${request.method} ${request.uri} ${request.response.statusCode} [${new DateTime.now().millisecondsSinceEpoch - start}ms]");
+    print("${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms]");
   }
 
 }

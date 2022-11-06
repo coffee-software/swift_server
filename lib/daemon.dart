@@ -6,14 +6,15 @@ import 'package:args/args.dart';
 import 'package:dart_amqp/dart_amqp.dart' as amqp;
 import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/config.dart';
-export 'package:swift_server/config.dart';
-import 'package:swift_server/error_handler.dart';
-export 'package:swift_server/error_handler.dart';
 
+import 'config.dart';
+export 'config.dart';
+import 'error_handler.dart';
+export 'error_handler.dart';
+import 'stats.dart';
+export 'stats.dart';
 import 'tools.dart';
 export 'tools.dart';
-
 import 'queues.dart';
 export 'queues.dart';
 
@@ -89,6 +90,9 @@ abstract class Daemon {
   @Inject
   ErrorHandler get errorHandler;
 
+  @Inject
+  Stats get stats;
+
   @InjectInstances
   Map<String, Job> get allJobs;
 
@@ -100,6 +104,7 @@ abstract class Daemon {
     int serviceId = config.getRequired<int>('service_id');
 
     print('RUN JOB $key');
+    int start = new DateTime.now().millisecondsSinceEpoch;
     try {
       await job.run();
     } catch (error, stacktrace) {
@@ -112,6 +117,9 @@ abstract class Daemon {
           key
         ]
     );
+    int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+    await stats.saveStats(serviceId, 'job.' + key, db.getAndResetCounter(), timeMs);
+
   }
 
   Future step() async {
@@ -167,6 +175,7 @@ abstract class Daemon {
         amqp.Consumer consumer = await amqpQueue.consume();
         amqpConsumers.add(consumer);
         await consumer.listen((amqp.AmqpMessage message) async {
+          int start = new DateTime.now().millisecondsSinceEpoch;
           try {
             var decodedMessage = json.decode(message.payloadAsString);
             await processor.processMessage(decodedMessage);
@@ -180,6 +189,8 @@ abstract class Daemon {
                 processor.queue.className
               ]
           );
+          int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+          await stats.saveStats(serviceId, 'queue.' + processor.queue.className, db.getAndResetCounter(), timeMs);
         });
     }
   }
