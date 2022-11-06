@@ -67,7 +67,7 @@ void main() async {
       await raw_daemon.$om.daemon.processQueuesIsolate();
       int serviceId = raw_daemon.$om.daemon.config.getRequired<int>('service_id');
 
-      raw_daemon.$om.daemon.allQueueProcessors['TestQueue1Processor']!.queue.postMessage(666);
+      await raw_daemon.$om.daemon.allQueueProcessors['TestQueue1Processor']!.queue.postMessage(666);
 
       await Future.delayed(Duration(milliseconds: 500));
 
@@ -78,7 +78,6 @@ void main() async {
       DateTime lastProcess = raw_daemon.$om.daemon.db.fixTZ(row!['last_process']);
       expect(new DateTime.now().difference(lastProcess).inSeconds < 5, true);
       await raw_daemon.$om.daemon.finishQueuesIsolate();
-
       await raw_daemon.$om.daemon.db.disconnect();
     });
 

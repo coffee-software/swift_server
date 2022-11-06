@@ -16,6 +16,8 @@ abstract class Db {
 
   MySqlConnection? connection;
 
+  int counter = 0;
+
   Future<MySqlConnection> getConnection() async {
     if (connection == null) {
       connection = await MySqlConnection.connect(
@@ -40,6 +42,12 @@ abstract class Db {
     }
   }
 
+  int getAndResetCounter() {
+    int tmp = counter;
+    counter = 0;
+    return tmp;
+  }
+
   DateTime fixTZ(DateTime dbDate) {
     //datetime from database is returned with local value but with tz forced to UTC
     //fix for datetime beeing forced to utc
@@ -53,6 +61,7 @@ abstract class Db {
   }
 
   Future<List<T>> fetchCol<T>(String sql, [List<Object?>? values]) async {
+    counter ++;
     List<T> ret = [];
     for (var row in await (await this.getConnection()).query(sql, values)) {
       ret.add(row[0]);
@@ -61,6 +70,7 @@ abstract class Db {
   }
 
   Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
+    counter ++;
     for (var row in await (await this.getConnection()).query(sql, values)) {
       return row.fields;
     }
@@ -68,6 +78,7 @@ abstract class Db {
   }
 
   dynamic fetchOne(String sql, [List<Object?>? values]) async {
+    counter ++;
     for (var row in await (await this.getConnection()).query(sql, values)) {
       return row[0];
     }
@@ -75,6 +86,7 @@ abstract class Db {
   }
 
   Future<Results> query(String sql, [List<Object?>? values]) async {
+    counter ++;
     return await (await this.getConnection()).query(sql, values);
   }
 

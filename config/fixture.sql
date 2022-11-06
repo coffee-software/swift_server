@@ -1,6 +1,6 @@
 CREATE TABLE run_errors (
     `app_id` INT NOT NULL,
-    `process` VARCHAR(255) NOT NULL,
+    `handler` VARCHAR(255) NOT NULL,
     `location` VARCHAR(255) NOT NULL,
 
     `status` VARCHAR(255) NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE run_errors (
     `last_request` TEXT NULL,
 
     `comment` TEXT NULL,
-    PRIMARY KEY(app_id, process, location)
+    PRIMARY KEY(app_id, handler, location)
 );
 
 CREATE TABLE run_queues (
@@ -35,4 +35,20 @@ CREATE TABLE run_jobs (
     `run_count` int NOT NULL DEFAULT 1,
     `last_run` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY(app_id, job)
+);
+
+CREATE TABLE run_stats (
+    `time` DATETIME,
+    `app_id` INT NOT NULL,
+    `sub_id` INT NOT NULL,
+    `handler` VARCHAR(255) NOT NULL,
+
+    `count` INT NOT NULL,
+
+    `max_queries` INT NOT NULL,
+    `avg_queries` FLOAT NOT NULL,
+    `max_time` INT NOT NULL,
+    `avg_time` FLOAT NOT NULL,
+
+    PRIMARY KEY(`time`, `app_id`, `sub_id`, `handler`)
 );
