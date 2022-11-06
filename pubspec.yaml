@@ -2,7 +2,7 @@ name: swift_server
 description: Simple microservices framework using swift_composer.
   Create servers, daemons and cli tools with a layer to access mysql db, amqp and files.
   Used by https://swift.shop
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/fsw/swift_server
 environment:
   sdk: ">=2.17.0 <3.0.0"
