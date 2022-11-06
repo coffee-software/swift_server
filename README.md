@@ -4,10 +4,10 @@ Simple Micro Service Framework using swift_composer
 
 ## Development Info
 
-Running raw server:
+Running example server:
 
 ```
-dart run build_runner build && dart bin/raw_server.dart --config test/config.yaml
+dart run build_runner build && dart example/raw_server.dart --config test/config.yaml
 ```
 
 Running tests:
