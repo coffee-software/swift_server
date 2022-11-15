@@ -24,15 +24,15 @@ abstract class Stats {
               '`handler` = ?, '
               '`count` = 1, '
               '`max_queries` = ?, '
-              '`avg_queries` = ?, '
+              '`total_queries` = ?, '
               '`max_time` = ?, '
-              '`avg_time` = ? '
+              '`total_time` = ? '
               ' ON DUPLICATE KEY UPDATE '
               '`count` = `count` + 1, '
               '`max_queries` = GREATEST(`max_queries`, VALUES(`max_queries`)), '
-              '`avg_queries` = (`avg_queries` * `count` + VALUES(`avg_queries`)) / (`count` + 1), '
+              '`total_queries` = `total_queries` + VALUES(`total_queries`), '
               '`max_time` = GREATEST(`max_time`, VALUES(`max_time`)), '
-              '`avg_time` = (`avg_time` * `count` + VALUES(`avg_time`)) / (`count` + 1) ',
+              '`total_time` = `total_time` + VALUES(`total_time`) ',
           [
             appId,
             subId,

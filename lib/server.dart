@@ -125,6 +125,10 @@ class HttpException implements Exception {
   HttpException(this.code, this.message);
 }
 
+class HttpUnauthorizedException extends HttpException {
+  HttpUnauthorizedException() : super(HttpStatus.unauthorized, 'Unauthorised');
+}
+
 class HttpRequestException extends HttpException {
   HttpRequestException(String message) : super(HttpStatus.unprocessableEntity, message);
 }

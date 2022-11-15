@@ -57,11 +57,12 @@ abstract class Db {
   }
 
   Future<IterableBase<ResultRow>> fetchRows(String sql, [List<Object?>? values]) async {
+    counter++;
     return await (await this.getConnection()).query(sql, values);
   }
 
   Future<List<T>> fetchCol<T>(String sql, [List<Object?>? values]) async {
-    counter ++;
+    counter++;
     List<T> ret = [];
     for (var row in await (await this.getConnection()).query(sql, values)) {
       ret.add(row[0]);
@@ -70,24 +71,27 @@ abstract class Db {
   }
 
   Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
-    counter ++;
+    counter++;
+    Map? ret = null;
     for (var row in await (await this.getConnection()).query(sql, values)) {
-      return row.fields;
+      ret = row.fields;
     }
-    return null;
+    return ret;
   }
 
   dynamic fetchOne(String sql, [List<Object?>? values]) async {
-    counter ++;
+    counter++;
+    dynamic ret = null;
     for (var row in await (await this.getConnection()).query(sql, values)) {
-      return row[0];
+      ret = row[0];
     }
-    return null;
+    return ret;
   }
 
   Future<Results> query(String sql, [List<Object?>? values]) async {
-    counter ++;
-    return await (await this.getConnection()).query(sql, values);
+    counter++;
+    Results ret = await (await this.getConnection()).query(sql, values);
+    return ret;
   }
 
 }

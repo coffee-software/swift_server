@@ -46,9 +46,10 @@ CREATE TABLE run_stats (
     `count` INT NOT NULL,
 
     `max_queries` INT NOT NULL,
-    `avg_queries` FLOAT NOT NULL,
+    `total_queries` FLOAT NOT NULL,
     `max_time` INT NOT NULL,
-    `avg_time` FLOAT NOT NULL,
+    `total_time` FLOAT NOT NULL,
 
-    PRIMARY KEY(`time`, `app_id`, `sub_id`, `handler`)
+    PRIMARY KEY(`time`, `app_id`, `sub_id`, `handler`),
+    INDEX(`handler`)
 );

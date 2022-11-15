@@ -121,6 +121,7 @@ abstract class Daemon {
   }
 
   Future step() async {
+    concurrentProcessors ++;
     int serviceId = config.getRequired<int>('service_id');
     DateTime now = await db.fetchOne('SELECT NOW()');
     for (var key in allJobs.keys) {
@@ -135,7 +136,10 @@ abstract class Daemon {
         await runJob(key);
       }
     }
-    await db.disconnect();
+    concurrentProcessors --;
+    if (concurrentProcessors == 0) {
+      await db.disconnect();
+    }
 
   }
 
@@ -159,6 +163,8 @@ abstract class Daemon {
     }
   }
 
+  int concurrentProcessors = 0;
+
   Future processQueuesIsolate() async {
     print("preparing queues(${allQueueProcessors.length}).");
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(
@@ -168,21 +174,24 @@ abstract class Daemon {
     amqpClient = new amqp.Client(settings: settings);
     amqp.Channel channel = await amqpClient!.channel();
     int serviceId = config.getRequired<int>('service_id');
-    int concurrentProcessors = 0;
     amqpConsumers = [];
     for (var processor in allQueueProcessors.values) {
         amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
         amqp.Consumer consumer = await amqpQueue.consume();
         amqpConsumers.add(consumer);
         await consumer.listen((amqp.AmqpMessage message) async {
-          concurrentProcessors ++;
           int start = new DateTime.now().millisecondsSinceEpoch;
           try {
             var decodedMessage = json.decode(message.payloadAsString);
+            while (concurrentProcessors > 10) {
+              await Future.delayed(Duration(seconds: 1));
+            }
+            concurrentProcessors ++;
             await processor.processMessage(decodedMessage);
           } catch (error, stacktrace) {
             await errorHandler.handleError(serviceId, 'queue.' + processor.queue.className, error, stacktrace);
           }
+          concurrentProcessors --;
           await db.query(
               'INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()',
               [
@@ -192,7 +201,6 @@ abstract class Daemon {
           );
           int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
           await stats.saveStats(serviceId, 'queue.' + processor.queue.className, db.getAndResetCounter(), timeMs);
-          concurrentProcessors --;
           if (concurrentProcessors == 0) {
             await db.disconnect();
           }
