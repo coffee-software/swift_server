@@ -66,7 +66,17 @@ abstract class HttpAction {
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
   // ignore: unused_element
-  void _setPostArgsMap(Map json, String name, Map? field) {
+  void _setPostArgsMapRequired(Map json, String name, Map field) {
+    if (!json.containsKey(name)) {
+      throw new HttpRequestException('Missing required parameter ' + name);
+    }
+    field = json[name];
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(PostArg)
+  // ignore: unused_element
+  void _setPostArgsMapOptional(Map json, String name, Map? field) {
     field = (json.containsKey(name) ? json[name] : null);
   }
 
