@@ -72,7 +72,7 @@ void main() async {
     }));
 
     test('database time settings', () async {
-      DateTime dbTime = await raw_daemon.$om.daemon.db.fetchOne('SELECT NOW()');
+      DateTime dbTime = await raw_daemon.$om.daemon.db.fetchOne<DateTime>('SELECT NOW()');
       dbTime = raw_daemon.$om.daemon.db.fixTZ(dbTime);
       DateTime systemTime = new DateTime.now();
       expect(dbTime.difference(systemTime).inSeconds, 0);
@@ -159,7 +159,7 @@ void main() async {
       await raw_daemon.$om.daemon.processQueuesIsolate();
       await raw_daemon.$om.daemon.allQueueProcessors['TestQueue2Processor']!.queue.postMessage('exception');
       await Future.delayed(Duration(milliseconds: 500));
-      var count = await raw_daemon.$om.daemon.db.fetchOne('SELECT COUNT(*) FROM run_errors');
+      var count = await raw_daemon.$om.daemon.db.fetchOne<int>('SELECT COUNT(*) FROM run_errors');
       expect(count, 1);
       await raw_daemon.$om.daemon.finishQueuesIsolate();
       await raw_daemon.$om.daemon.db.disconnect();

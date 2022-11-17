@@ -12,14 +12,14 @@ abstract class StatusActionCheck {
 
 abstract class StatusActionDbCheck extends StatusActionCheck {
   Future<Map<String,bool>> check() async {
-    return {'database' : await server.db.fetchOne('SELECT 1') == 1};
+    return {'database' : await server.db.fetchOne<int>('SELECT 1') == 1};
   }
 }
 
 abstract class StatusActionTickerCheck extends StatusActionCheck {
   Future<Map<String,bool>> check() async {
     int serviceId = server.config.getRequired<int>('service_id');
-    var lastRun = await server.db.fetchOne(
+    var lastRun = await server.db.fetchOne<DateTime>(
         'SELECT last_run FROM run_jobs WHERE app_id = ? AND job = ?',
         [ serviceId, 'Ticker' ]
     );

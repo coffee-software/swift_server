@@ -79,7 +79,7 @@ abstract class Db {
     return ret;
   }
 
-  dynamic fetchOne(String sql, [List<Object?>? values]) async {
+  Future<T> fetchOne<T>(String sql, [List<Object?>? values]) async {
     counter++;
     dynamic ret = null;
     for (var row in await (await this.getConnection()).query(sql, values)) {

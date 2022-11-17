@@ -123,11 +123,11 @@ abstract class Daemon {
   Future step() async {
     concurrentProcessors ++;
     int serviceId = config.getRequired<int>('service_id');
-    DateTime now = await db.fetchOne('SELECT NOW()');
+    DateTime now = await db.fetchOne<DateTime>('SELECT NOW()');
     for (var key in allJobs.keys) {
       var job = allJobs[key]!;
       if (job.lastStart == null) {
-        job.lastStart = await db.fetchOne(
+        job.lastStart = await db.fetchOne<DateTime>(
             'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
             [serviceId, key]);
       }
@@ -214,7 +214,7 @@ abstract class Daemon {
     if (args.runSingleJob != null) {
       if (allJobs.containsKey(args.runSingleJob)) {
         var job = allJobs[args.runSingleJob]!;
-        job.lastStart = await db.fetchOne('SELECT NOW()');
+        job.lastStart = await db.fetchOne<DateTime>('SELECT NOW()');
         await runJob(args.runSingleJob!);
         await db.disconnect();
         print('DONE');
