@@ -28,10 +28,8 @@ abstract class Job {
   @InjectClassName
   String get className;
 
-  @Inject
-  Daemon get daemon;
-
-  DateTime? lastStart;
+  @Create
+  late Db db;
 
   Future run();
 
@@ -75,11 +73,9 @@ abstract class DaemonArgs {
  */
 @Compose
 abstract class Daemon {
-  @Inject
-  Db get db;
 
-  @Inject
-  Net get net;
+  @Create
+  late Db db;
 
   @Inject
   DaemonArgs get args;
@@ -93,22 +89,28 @@ abstract class Daemon {
   @Inject
   Stats get stats;
 
-  @InjectInstances
-  Map<String, Job> get allJobs;
+  @SubtypeFactory
+  Job createJob(String className);
 
-  @InjectInstances
-  Map<String, QueueProcessor> get allQueueProcessors;
+  @Inject
+  SubtypesOf<Job> get allJobs;
+
+  @SubtypeFactory
+  QueueProcessor createQueueProcessor(String className);
+
+  @Inject
+  SubtypesOf<QueueProcessor> get allQueueProcessors;
 
   Future runJob(String key) async {
-    var job = allJobs[key]!;
+    var job = createJob(key);
     int serviceId = config.getRequired<int>('service_id');
     int start = new DateTime.now().millisecondsSinceEpoch;
     try {
       await job.run();
     } catch (error, stacktrace) {
-      await errorHandler.handleError(serviceId, 'job.' + key, error, stacktrace);
+      await errorHandler.handleError(job.db, serviceId, 'job.' + key, error, stacktrace);
     }
-    await db.query(
+    await job.db.query(
         'INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()',
         [
           serviceId,
@@ -116,35 +118,31 @@ abstract class Daemon {
         ]
     );
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-    await stats.saveStats(serviceId, 'job.' + key, db.getAndResetCounter(), timeMs);
-
+    await stats.saveStats(job.db, serviceId, 'job.' + key, job.db.counter, timeMs);
+    await job.db.disconnect();
   }
 
   Future step() async {
-    concurrentProcessors ++;
     int serviceId = config.getRequired<int>('service_id');
-    DateTime now = await db.fetchOne<DateTime>('SELECT NOW()');
-    for (var key in allJobs.keys) {
-      var job = allJobs[key]!;
-      if (job.lastStart == null) {
-        job.lastStart = await db.fetchOne<DateTime>(
+    DateTime now = DateTime.now();
+    Map<String, DateTime?> lastStarts = {};
+    for (var key in allJobs.allClassNames) {
+      if (!lastStarts.containsKey(key)) {
+        lastStarts[key] = await db.fetchOne<DateTime?>(
             'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
             [serviceId, key]);
       }
-      if ((job.lastStart == null) || (now.difference(job.lastStart!).inMinutes >= job.minuteInterval)) {
-        job.lastStart = now;
+      //TODO @Interval annotation
+      if ((lastStarts[key] == null) || (now.difference(lastStarts[key]!).inMinutes >= createJob(key).minuteInterval)) {
+        lastStarts[key] = now;
         await runJob(key);
       }
     }
-    concurrentProcessors --;
-    if (concurrentProcessors == 0) {
-      await db.disconnect();
-    }
-
+    await db.disconnect();
   }
 
   void processJobsIsolate() async {
-    print("start processing jobs(${allJobs.length}).");
+    print("start processing jobs(${allJobs.allClassNames.length}).");
     while (true) {
       step();
       await Future.delayed(Duration(milliseconds: 5000));
@@ -166,7 +164,7 @@ abstract class Daemon {
   int concurrentProcessors = 0;
 
   Future processQueuesIsolate() async {
-    print("preparing queues(${allQueueProcessors.length}).");
+    print("preparing queues(${allQueueProcessors.allClassNames.length}).");
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(
         host: config.getRequired<String>('amqp.host'),
         port: config.getRequired<int>('amqp.port')
@@ -175,11 +173,13 @@ abstract class Daemon {
     amqp.Channel channel = await amqpClient!.channel();
     int serviceId = config.getRequired<int>('service_id');
     amqpConsumers = [];
-    for (var processor in allQueueProcessors.values) {
+    for (var processorName in allQueueProcessors.allClassNames) {
+        var processor = createQueueProcessor(processorName);
         amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
         amqp.Consumer consumer = await amqpQueue.consume();
         amqpConsumers.add(consumer);
         await consumer.listen((amqp.AmqpMessage message) async {
+          var processor = createQueueProcessor(processorName);
           int start = new DateTime.now().millisecondsSinceEpoch;
           try {
             var decodedMessage = json.decode(message.payloadAsString);
@@ -189,10 +189,10 @@ abstract class Daemon {
             concurrentProcessors ++;
             await processor.processMessage(decodedMessage);
           } catch (error, stacktrace) {
-            await errorHandler.handleError(serviceId, 'queue.' + processor.queue.className, error, stacktrace);
+            await errorHandler.handleError(processor.db, serviceId, 'queue.' + processor.queue.className, error, stacktrace);
           }
           concurrentProcessors --;
-          await db.query(
+          await processor.db.query(
               'INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()',
               [
                 serviceId,
@@ -200,10 +200,8 @@ abstract class Daemon {
               ]
           );
           int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-          await stats.saveStats(serviceId, 'queue.' + processor.queue.className, db.getAndResetCounter(), timeMs);
-          if (concurrentProcessors == 0) {
-            await db.disconnect();
-          }
+          await stats.saveStats(processor.db, serviceId, 'queue.' + processor.queue.className, 123, timeMs);
+          await processor.db.disconnect();
         });
     }
   }
@@ -212,20 +210,17 @@ abstract class Daemon {
     args.parse(arguments);
     await config.load(args.configPath);
     if (args.runSingleJob != null) {
-      if (allJobs.containsKey(args.runSingleJob)) {
-        var job = allJobs[args.runSingleJob]!;
-        job.lastStart = await db.fetchOne<DateTime>('SELECT NOW()');
+      if (allJobs.allClassNames.contains(args.runSingleJob)) {
         await runJob(args.runSingleJob!);
-        await db.disconnect();
         print('DONE');
       } else {
         print("unknown job ${args.runSingleJob}");
-        print("available jobs ${allJobs.keys}");
+        print("available jobs ${allJobs.allClassNames}");
       }
     } else {
       print("starting daemon...");
 
-      if (allQueueProcessors.isNotEmpty) {
+      if (allQueueProcessors.allClassNames.isNotEmpty) {
         await processQueuesIsolate();
         //TODO separate isolates per queue?
         /*await Isolate.spawn(
@@ -233,8 +228,7 @@ abstract class Daemon {
           new DaemonIsolateArgs(receivePort.sendPort, this.config),
         );*/
       }
-
-      if (allJobs.isNotEmpty) {
+      if (allJobs.allClassNames.isNotEmpty) {
         processJobsIsolate();
       }
     }

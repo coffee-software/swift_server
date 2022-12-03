@@ -10,7 +10,6 @@ import '../example/raw_cli.dart' as raw_cli;
 import 'package:swift_server/testsuite.dart';
 import 'package:path/path.dart' as path;
 
-
 String testConfigPath() {
   return path.dirname(Platform.script.toFilePath()) + '/config.yaml';
 }
@@ -25,7 +24,6 @@ void Function() overridePrint(void testFn()) => () {
   _log = [];
   var spec = new ZoneSpecification(
       print: (_, __, ___, String msg) {
-        // Add to log instead of printing to stdout
         _log.add(msg);
       }
   );
@@ -42,14 +40,14 @@ void main() async {
     test('routing', overridePrint(() async {
       var response = await getServerResponse(
           raw_server.$om.server,
-          MockRequest.get('/schema.json')
+          MockRequest.get('/schema')
       );
       expect(response.statusCode, 200);
       Map <String, dynamic> ret = response.toJson();
       expect(ret.keys.length, 5);
-      expect(ret.containsKey('/schema.json'), true);
-      expect(ret.containsKey('/status.json'), true);
-      expect(ret.containsKey('/test.json'), true);
+      expect(ret.containsKey('/schema'), true);
+      expect(ret.containsKey('/status'), true);
+      expect(ret.containsKey('/test'), true);
       expect(ret.containsKey('/favicon.ico'), true);
       expect(ret.containsKey('/robots.txt'), true);
     }));
@@ -65,7 +63,7 @@ void main() async {
     test('test action', overridePrint(() async {
       var response = await getServerResponse(
           raw_server.$om.server,
-          MockRequest.get('/test.json')
+          MockRequest.get('/test')
       );
       expect(response.statusCode, 200);
       expect(response.toString(), '{"response":"test","float":1.5}');
@@ -73,14 +71,14 @@ void main() async {
 
     test('database time settings', () async {
       DateTime dbTime = await raw_daemon.$om.daemon.db.fetchOne<DateTime>('SELECT NOW()');
-      dbTime = raw_daemon.$om.daemon.db.fixTZ(dbTime);
       DateTime systemTime = new DateTime.now();
       expect(dbTime.difference(systemTime).inSeconds, 0);
+      await raw_daemon.$om.daemon.db.disconnect();
     });
 
     test('daemon jobs test', overridePrint(() async {
       //force jobs to be executed
-      await raw_daemon.$om.daemon.db.query('DELETE FROM run_jobs');
+      await raw_daemon.$om.daemon.db.query('DELETE FROM run_jobs WHERE job != ?', ['banana']);
       await raw_daemon.$om.daemon.step();
       int serviceId = raw_daemon.$om.daemon.config.getRequired<int>('service_id');
 
@@ -88,7 +86,7 @@ void main() async {
           'SELECT * FROM run_jobs WHERE app_id = ? AND job = ?',
           [ serviceId, 'Ticker' ]
       );
-      DateTime daemonLastRun = raw_daemon.$om.daemon.db.fixTZ(row!['last_run']);
+      DateTime daemonLastRun = row!['last_run'];
       expect(new DateTime.now().difference(daemonLastRun).inSeconds < 65, true);
       expect(getLogs().indexOf('running test job') > -1, true);
       await raw_daemon.$om.daemon.db.disconnect();
@@ -97,17 +95,15 @@ void main() async {
     test('daemon queues test', overridePrint(() async {
       await raw_daemon.$om.daemon.processQueuesIsolate();
       int serviceId = raw_daemon.$om.daemon.config.getRequired<int>('service_id');
-
-      await raw_daemon.$om.daemon.allQueueProcessors['TestQueue1Processor']!.queue.postMessage(123);
-      await raw_daemon.$om.daemon.allQueueProcessors['TestQueue1Processor']!.queue.postMessage(456);
-      await raw_daemon.$om.daemon.allQueueProcessors['TestQueue2Processor']!.queue.postMessage('TEST1');
+      await raw_daemon.$om.testQueue1.postMessage(123);
+      await raw_daemon.$om.testQueue1.postMessage(456);
+      await raw_daemon.$om.testQueue2.postMessage('TEST1');
       await Future.delayed(Duration(milliseconds: 500));
-
       var row = await raw_daemon.$om.daemon.db.fetchRow(
           'SELECT * FROM run_queues WHERE app_id = ? AND queue = ?',
           [ serviceId, 'TestQueue1' ]
       );
-      DateTime lastProcess = raw_daemon.$om.daemon.db.fixTZ(row!['last_process']);
+      DateTime lastProcess = row!['last_process'];
       expect(new DateTime.now().difference(lastProcess).inSeconds < 5, true);
       expect(getLogs().indexOf('queue 1 message: 456') > -1, true);
       expect(getLogs().indexOf('queue 2 message: TEST1') > -1, true);
@@ -123,12 +119,11 @@ void main() async {
     test('status', overridePrint(() async {
       var response = await getServerResponse(
           raw_server.$om.server,
-          MockRequest.get('/status.json')
+          MockRequest.get('/status')
       );
       expect(response.statusCode, 200);
       Map <String, dynamic> ret = response.toJson();
       expect(ret['healthy'], true);
-      await raw_server.$om.server.db.disconnect();
     }));
 
     test('robots', overridePrint(() async {
@@ -157,7 +152,7 @@ void main() async {
     test('exceptions handling test', overridePrint(() async {
       await raw_daemon.$om.daemon.db.query('DELETE FROM run_errors');
       await raw_daemon.$om.daemon.processQueuesIsolate();
-      await raw_daemon.$om.daemon.allQueueProcessors['TestQueue2Processor']!.queue.postMessage('exception');
+      await raw_daemon.$om.testQueue2.postMessage('exception');
       await Future.delayed(Duration(milliseconds: 500));
       var count = await raw_daemon.$om.daemon.db.fetchOne<int>('SELECT COUNT(*) FROM run_errors');
       expect(count, 1);

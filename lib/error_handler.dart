@@ -8,12 +8,9 @@ import 'package:swift_server/tools.dart';
 abstract class ErrorHandler {
 
   @Inject
-  Db get db;
-
-  @Inject
   ServerConfig get config;
 
-  Future handleError(int appId, String handler, error, stacktrace) async {
+  Future handleError(Db db, int appId, String handler, error, stacktrace) async {
 
     if (config.getRequired<bool>('debug')) {
       print('###############################################################');

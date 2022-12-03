@@ -32,15 +32,16 @@ const PathArg = true;
 @ComposeSubtypes
 abstract class HttpAction {
 
-  String? ext = null;
-
   @InjectClassName
   String get className;
 
   @Inject
   Server get server;
 
-  //@Require
+  @Create
+  late Db db;
+
+  @Require
   late HttpRequest request;
 
   @Compile
@@ -146,7 +147,6 @@ class HttpRequestException extends HttpException {
 @ComposeSubtypes
 abstract class JsonAction extends HttpAction {
 
-  String? ext = 'json';
   int responseStatus = HttpStatus.ok;
 
   Future prapareData() async {}
@@ -209,18 +209,17 @@ class RouteNode {
 abstract class Router implements Pluggable {
 
   @SubtypeFactory
-  HttpAction createAction(String className/*, HttpRequest request*/);
+  HttpAction createAction(String className, HttpRequest request);
 
-  //TODO:swift_composer only codes are required here
-  @InjectInstances
-  Map<String, HttpAction> get allActions;
+  @Inject
+  SubtypesOf<HttpAction> get allActions;
 
   RouteNode? _root;
   RouteNode get root {
     if (_root == null) {
       _root = new RouteNode();
-      allActions.keys.forEach((element) {
-        String name = element;
+      allActions.allClassNames.forEach((className) {
+        String name = className;
         if (name.startsWith('module_')) {
           name = name.substring(7);
         }
@@ -228,12 +227,15 @@ abstract class Router implements Pluggable {
           name = name.substring(0, name.length - 6);
         }
         var path = name.split('.').map((e) => e[0].toLowerCase() + e.substring(1)).toList();
-        if (allActions[element]!.ext != null) {
-          path.last = path.last + '.' + allActions[element]!.ext!;
+        var exts = ['Json', 'Txt', 'Ico'];
+        for (var ext in exts) {
+          if (path.last.endsWith(ext)) {
+            path.last = path.last.substring(0, path.last.length - ext.length) + '.' + ext.toLowerCase();
+          }
         }
         _root!.add(
             path,
-            element
+            className
         );
       });
     }
@@ -244,14 +246,13 @@ abstract class Router implements Pluggable {
     return root.find(pathSegments);
   }
 
-  HttpAction getForRequest(HttpRequest request) {
+  HttpAction? getForRequest(HttpRequest request) {
     List<String> pathArgs = new List<String>.from(request.uri.pathSegments);
     String? className = this.mapPathToClassName(pathArgs);
     if (className == null) {
-      throw new HttpException(HttpStatus.notFound, request.uri.toString());
+      return null;
     }
-    HttpAction action = createAction(className);
-    action.request = request;
+    HttpAction action = createAction(className, request);
     return action;
   }
 
@@ -296,8 +297,6 @@ abstract class Server {
   @Inject
   ServerArgs get args;
   @Inject
-  Db get db;
-  @Inject
   ErrorHandler get errorHandler;
   @Inject
   Stats get stats;
@@ -315,7 +314,7 @@ abstract class Server {
     server.listen(handleRequest);
   }
 
-  void writeError(HttpRequest request, int code, String message, StackTrace trace) {
+  void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
     //TODO depend on request accepted header
     //request.response.write("<pre>${new HtmlEscape().convert(stackTrace.toString())}</pre>");
     request.response.statusCode = code;
@@ -325,45 +324,48 @@ abstract class Server {
       'error': "${code} ${httpStatusMessage[code]!}",
       'message': message
     };
-    if (config.getRequired<bool>('debug')) {
+    if (config.getRequired<bool>('debug') && trace != null) {
       json['trace'] = trace.toString();
     }
     request.response.write(jsonEncode(json));
   }
 
-  int concurrentRequests = 0;
-
   Future handleRequest(HttpRequest request) async {
-    concurrentRequests ++;
     int start = new DateTime.now().millisecondsSinceEpoch;
     int serviceId = config.getRequired<int>('service_id');
     String actionName = 'unknown';
-    try {
-      HttpAction action = routing.getForRequest(request);
-      actionName = action.className;
-      await action.handleRequest();
-    } on Redirect catch (error) {
-      request.response.redirect(new Uri.http(request.uri.authority, error.uri));
-    } on HttpException catch (error, stacktrace) {
-      writeError(request, error.code, error.message, stacktrace);
-    } catch (error, stacktrace) {
-      writeError(
-          request,
-          HttpStatus.internalServerError,
-          'unknown error occured',
-          stacktrace
-      );
-      await errorHandler.handleError(serviceId, 'action.' + actionName, error, stacktrace);
+    HttpAction? action = routing.getForRequest(request);
+    int queries = 0;
+    if (action == null) {
+      writeError(request, HttpStatus.notFound, request.uri.toString());
+    } else {
+      try {
+        actionName = action.className;
+        await action.handleRequest();
+      } on Redirect catch (error) {
+        request.response.redirect(new Uri.http(request.uri.authority, error.uri));
+      } on HttpException catch (error, stacktrace) {
+        writeError(request, error.code, error.message, trace: stacktrace);
+      } catch (error, stacktrace) {
+        writeError(
+            request,
+            HttpStatus.internalServerError,
+            'unknown error occured',
+            trace: stacktrace
+        );
+        await errorHandler.handleError(action.db, serviceId, 'action.' + actionName, error, stacktrace);
+      } finally {
+        queries = action.db.counter;
+        await action.db.disconnect();
+      }
     }
     request.response.close();
-
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-
-    await stats.saveStats(serviceId, 'action.' + actionName, db.getAndResetCounter(), timeMs);
-
-    concurrentRequests --;
-    if (concurrentRequests == 0) {
-      await db.disconnect();
+    if (action != null) {
+      await stats.saveStats(
+          action.db, serviceId, 'action.' + actionName, queries, timeMs
+      );
+      await action.db.disconnect();
     }
     print("${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms]");
   }

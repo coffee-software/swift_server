@@ -53,8 +53,8 @@ abstract class Command {
  */
 @Compose
 abstract class Cli {
-  @Inject
-  Db get db;
+  @Create
+  late Db db;
 
   @Inject
   Net get net;

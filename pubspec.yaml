@@ -9,7 +9,7 @@ environment:
 dependencies:
   swift_composer: ^0.6.0
   yaml: ^3.0.0
-  mysql1: ^0.20.0
+  mysql_client: ^0.0.27
   dart_amqp: ^0.2.3
   args: ^2.3.0
 dev_dependencies:

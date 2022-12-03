@@ -6,15 +6,9 @@ import 'package:swift_server/tools.dart';
 @Compose
 abstract class Stats {
 
-  @Inject
-  Db get db;
-
-  @Inject
-  ServerConfig get config;
-
   int subId = 0;
 
-  Future saveStats(int appId, String handler, int queries, int timeMs) async {
+  Future saveStats(Db db, int appId, String handler, int queries, int timeMs) async {
       int interval = 7 * 60;
       await db.query(
           'INSERT INTO run_stats SET '

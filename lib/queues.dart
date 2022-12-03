@@ -34,8 +34,8 @@ abstract class Queue<T> {
 @ComposeSubtypes
 abstract class QueueProcessor<Q extends Queue, T> {
 
-  @Inject
-  Db get db;
+  @Create
+  late Db db;
 
   @Inject
   ServerConfig get config;

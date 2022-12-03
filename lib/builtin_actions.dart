@@ -7,26 +7,25 @@ abstract class StatusActionCheck {
   @Inject
   Server get server;
 
-  Future<Map<String,bool>> check();
+  Future<Map<String,bool>> check(StatusAction action);
 }
 
 abstract class StatusActionDbCheck extends StatusActionCheck {
-  Future<Map<String,bool>> check() async {
-    return {'database' : await server.db.fetchOne<int>('SELECT 1') == 1};
+  Future<Map<String,bool>> check(StatusAction action) async {
+    return {'database' : await action.db.fetchOne<int>('SELECT 1') == 1};
   }
 }
 
 abstract class StatusActionTickerCheck extends StatusActionCheck {
-  Future<Map<String,bool>> check() async {
+  Future<Map<String,bool>> check(StatusAction action) async {
     int serviceId = server.config.getRequired<int>('service_id');
-    var lastRun = await server.db.fetchOne<DateTime>(
+    var lastRun = await action.db.fetchOne<DateTime>(
         'SELECT last_run FROM run_jobs WHERE app_id = ? AND job = ?',
         [ serviceId, 'Ticker' ]
     );
     var ret = false;
     if (lastRun != null) {
-      DateTime daemonLastRun = server.db.fixTZ(lastRun);
-      ret = new DateTime.now().difference(daemonLastRun).inSeconds < 65;
+      ret = new DateTime.now().difference(lastRun).inSeconds < 65;
     }
     return {'ticker' : ret};
   }
@@ -46,7 +45,7 @@ abstract class StatusAction extends JsonAction {
     Map<String, bool> checks = {};
     for (var key in allChecks.keys) {
       try {
-        checks.addAll(await allChecks[key]!.check());
+        checks.addAll(await allChecks[key]!.check(this));
       } catch (e) {
         checks[key] = false;
       }
@@ -95,9 +94,7 @@ abstract class SchemaAction extends JsonAction {
 /**
  * Robots Action
  */
-abstract class RobotsAction extends HttpAction {
-
-  String? ext = 'txt';
+abstract class RobotsTxtAction extends HttpAction {
 
   Future handleRequest() async
   {
@@ -113,9 +110,7 @@ abstract class RobotsAction extends HttpAction {
 /**
  * Favicon Action
  */
-abstract class FaviconAction extends HttpAction {
-
-  String? ext = 'ico';
+abstract class FaviconIcoAction extends HttpAction {
 
   Future handleRequest() async
   {

@@ -3,7 +3,7 @@ library c7server;
 import 'dart:convert';
 import 'dart:io';
 import 'package:swift_composer/swift_composer.dart';
-import 'package:mysql1/mysql1.dart';
+import 'package:mysql_client/mysql_client.dart';
 import 'dart:collection';
 
 import 'package:swift_server/config.dart';
@@ -14,58 +14,53 @@ abstract class Db {
   @Inject
   ServerConfig get config;
 
-  MySqlConnection? connection;
+  MySQLConnection? connection;
 
   int counter = 0;
 
-  Future<MySqlConnection> getConnection() async {
+  Future<MySQLConnection> getConnection() async {
     if (connection == null) {
-      connection = await MySqlConnection.connect(
-          ConnectionSettings(
-              host: config.getRequired<String>('database.host'),
-              port: config.getRequired<int>('database.port'),
-              user: config.getRequired<String>('database.user'),
-              db: config.getRequired<String>('database.database'),
-              password: config.getRequired<String>('database.password')
-          )
+      connection = await MySQLConnection.createConnection(
+        host: config.getRequired<String>('database.host'),
+        port: config.getRequired<int>('database.port'),
+        userName: config.getRequired<String>('database.user'),
+        databaseName: config.getRequired<String>('database.database'),
+        password: config.getRequired<String>('database.password'),
+        secure: true
       );
+      await connection!.connect();
       //temporary fix for new mysql version
-      await Future.delayed(Duration(milliseconds: 1));
+      //await Future.delayed(Duration(milliseconds: 1));
     }
     return connection!;
   }
 
   Future<void> disconnect() async {
     if (connection != null) {
-      await connection!.close();
+      var tmpConnection = connection;
       connection = null;
+      await tmpConnection!.close();
     }
   }
 
-  int getAndResetCounter() {
-    int tmp = counter;
-    counter = 0;
-    return tmp;
-  }
-
-  DateTime fixTZ(DateTime dbDate) {
+  /*DateTime fixTZ(DateTime dbDate) {
     //datetime from database is returned with local value but with tz forced to UTC
     //fix for datetime beeing forced to utc
     return new DateTime.fromMillisecondsSinceEpoch(dbDate
         .subtract(new DateTime.now().timeZoneOffset)
         .millisecondsSinceEpoch);
-  }
+  }*/
 
-  Future<IterableBase<ResultRow>> fetchRows(String sql, [List<Object?>? values]) async {
+  Future<Iterable<ResultSetRow>> fetchRows(String sql, [List<Object?>? values]) async {
     counter++;
-    return await (await this.getConnection()).query(sql, values);
+    return (await _prepareAndExecute(sql, values)).rows;
   }
 
   Future<List<T>> fetchCol<T>(String sql, [List<Object?>? values]) async {
     counter++;
     List<T> ret = [];
-    for (var row in await (await this.getConnection()).query(sql, values)) {
-      ret.add(row[0]);
+    for (var row in (await _prepareAndExecute(sql, values)).rows) {
+      ret.add(row.typedColAt<T>(0)!);
     }
     return ret;
   }
@@ -73,8 +68,8 @@ abstract class Db {
   Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
     counter++;
     Map? ret = null;
-    for (var row in await (await this.getConnection()).query(sql, values)) {
-      ret = row.fields;
+    for (var row in (await _prepareAndExecute(sql, values)).rows) {
+      ret = row.typedAssoc();
     }
     return ret;
   }
@@ -82,18 +77,26 @@ abstract class Db {
   Future<T> fetchOne<T>(String sql, [List<Object?>? values]) async {
     counter++;
     dynamic ret = null;
-    for (var row in await (await this.getConnection()).query(sql, values)) {
-      ret = row[0];
+    for (var row in (await _prepareAndExecute(sql, values)).rows) {
+      ret = row.typedColAt<T>(0);
     }
     return ret;
   }
 
-  Future<Results> query(String sql, [List<Object?>? values]) async {
+  Future<IResultSet> query(String sql, [List<dynamic>? values]) async {
     counter++;
-    Results ret = await (await this.getConnection()).query(sql, values);
-    return ret;
+    return await _prepareAndExecute(sql, values);
   }
 
+  Future<IResultSet> _prepareAndExecute(String sql, [List<dynamic>? values]) async {
+    if (values == null) {
+      return await (await this.getConnection()).execute(sql);
+    }
+    var stmt = await (await this.getConnection()).prepare(sql);
+    var ret = await stmt.execute(values);
+    await stmt.deallocate();
+    return ret;
+  }
 }
 
 @Compose
