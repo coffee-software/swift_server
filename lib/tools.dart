@@ -51,9 +51,13 @@ abstract class Db {
         .millisecondsSinceEpoch);
   }*/
 
-  Future<Iterable<ResultSetRow>> fetchRows(String sql, [List<Object?>? values]) async {
+  Future<Iterable<Map>> fetchRows(String sql, [List<Object?>? values]) async {
     counter++;
-    return (await _prepareAndExecute(sql, values)).rows;
+    List<Map> ret = [];
+    for (var row in (await _prepareAndExecute(sql, values)).rows) {
+      ret.add(row.typedAssoc());
+    }
+    return ret;
   }
 
   Future<List<T>> fetchCol<T>(String sql, [List<Object?>? values]) async {
