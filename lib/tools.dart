@@ -4,9 +4,34 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:mysql_client/mysql_client.dart';
-import 'dart:collection';
 
 import 'package:swift_server/config.dart';
+
+@Compose
+abstract class NamedLock {
+
+  Map<String, RandomAccessFile?> _locks = {};
+
+  Future<void> lock(String name) async {
+    await Future.doWhile(() async {
+      if (_locks.containsKey(name)) {
+        await Future.delayed(const Duration(milliseconds: 10));
+        return true;
+      }
+      String path = '/var/lock/swift_' + name;
+      final file = File(path);
+      var raf = file.openSync(mode: FileMode.write);
+      _locks[name] = raf;
+      return false;
+    });
+    await _locks[name]!.lock(FileLock.blockingExclusive);
+  }
+
+  Future<void> unlock(String name) async {
+    _locks[name]!.closeSync();
+    _locks.remove(name);
+  }
+}
 
 @Compose
 abstract class Db {
@@ -78,7 +103,7 @@ abstract class Db {
     return ret;
   }
 
-  Future<T> fetchOne<T>(String sql, [List<Object?>? values]) async {
+  Future<T?> fetchOne<T>(String sql, [List<Object?>? values]) async {
     counter++;
     dynamic ret = null;
     for (var row in (await _prepareAndExecute(sql, values)).rows) {

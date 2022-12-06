@@ -3,14 +3,19 @@ import 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 import 'package:swift_server/tools.dart';
 
+
+abstract class StatsAction {
+  Db get db;
+  int get statsSubId;
+  String get className;
+}
+
 @Compose
 abstract class Stats {
 
-  int subId = 0;
-
-  Future saveStats(Db db, int appId, String handler, int queries, int timeMs) async {
+  Future saveStats(int appId, String prefix, StatsAction action, int timeMs) async {
       int interval = 7 * 60;
-      await db.query(
+      await action.db.query(
           'INSERT INTO run_stats SET '
               '`time` = FROM_UNIXTIME((UNIX_TIMESTAMP(NOW()) div ($interval)) * ($interval)), '
               '`app_id` = ?, '
@@ -29,13 +34,14 @@ abstract class Stats {
               '`total_time` = `total_time` + VALUES(`total_time`) ',
           [
             appId,
-            subId,
-            handler,
-            queries,
-            queries,
+            action.statsSubId,
+            prefix + '.' + action.className,
+            action.db.counter,
+            action.db.counter,
             timeMs,
             timeMs
           ]
       );
+      action.db.counter = 0;
   }
 }

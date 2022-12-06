@@ -21,6 +21,7 @@ export 'tools.dart';
 
 export 'builtin_actions.dart';
 export 'queues.dart';
+export 'mailer.dart';
 
 const PostArg = true;
 const GetArg = true;
@@ -30,10 +31,12 @@ const PathArg = true;
  * Single HTTP API Endpoint
  */
 @ComposeSubtypes
-abstract class HttpAction {
+abstract class HttpAction implements StatsAction {
 
   @InjectClassName
   String get className;
+
+  int statsSubId = 0;
 
   @Inject
   Server get server;
@@ -363,7 +366,7 @@ abstract class Server {
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
     if (action != null) {
       await stats.saveStats(
-          action.db, serviceId, 'action.' + actionName, queries, timeMs
+          serviceId, 'action', action, timeMs
       );
       await action.db.disconnect();
     }

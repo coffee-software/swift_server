@@ -70,7 +70,7 @@ void main() async {
     }));
 
     test('database time settings', () async {
-      DateTime dbTime = await raw_daemon.$om.daemon.db.fetchOne<DateTime>('SELECT NOW()');
+      DateTime dbTime = (await raw_daemon.$om.daemon.db.fetchOne<DateTime>('SELECT NOW()'))!;
       DateTime systemTime = new DateTime.now();
       expect(dbTime.difference(systemTime).inSeconds, 0);
       await raw_daemon.$om.daemon.db.disconnect();
@@ -160,5 +160,13 @@ void main() async {
       await raw_daemon.$om.daemon.db.disconnect();
       expect(getLogs().indexOf('###############         Unhandled Error         ###############') > -1, true);
     }));
+
+    test('named locks', () async {
+      [1,2,3].forEach((element) async {
+        await raw_server.$om.namedLock.lock('test');
+        await Future.delayed(const Duration(milliseconds: 100));
+        await raw_server.$om.namedLock.unlock('test');
+      });
+    });
 
 }

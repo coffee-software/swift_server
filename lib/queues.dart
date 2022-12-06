@@ -1,6 +1,7 @@
 import 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 import 'package:dart_amqp/dart_amqp.dart' as amqp;
+import 'package:swift_server/daemon.dart';
 import 'dart:convert';
 
 import 'package:swift_server/tools.dart';
@@ -32,10 +33,15 @@ abstract class Queue<T> {
 
 
 @ComposeSubtypes
-abstract class QueueProcessor<Q extends Queue, T> {
+abstract class QueueProcessor<Q extends Queue, T> implements StatsAction {
 
   @Create
   late Db db;
+
+  int statsSubId = 0;
+
+  @InjectClassName
+  String get className;
 
   @Inject
   ServerConfig get config;

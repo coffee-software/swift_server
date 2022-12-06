@@ -10,6 +10,7 @@ export 'package:swift_server/config.dart';
 
 import 'tools.dart';
 export 'tools.dart';
+export 'mailer.dart';
 
 const CliArg = true;
 

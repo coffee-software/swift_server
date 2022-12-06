@@ -18,15 +18,19 @@ export 'tools.dart';
 import 'queues.dart';
 export 'queues.dart';
 
+export 'mailer.dart';
+
 
 /**
  * Single Cron Job
  */
 @ComposeSubtypes
-abstract class Job {
+abstract class Job implements StatsAction {
 
   @InjectClassName
   String get className;
+
+  int statsSubId = 0;
 
   @Create
   late Db db;
@@ -118,7 +122,7 @@ abstract class Daemon {
         ]
     );
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-    await stats.saveStats(job.db, serviceId, 'job.' + key, job.db.counter, timeMs);
+    await stats.saveStats(serviceId, 'job', job, timeMs);
     await job.db.disconnect();
   }
 
@@ -128,7 +132,7 @@ abstract class Daemon {
     Map<String, DateTime?> lastStarts = {};
     for (var key in allJobs.allClassNames) {
       if (!lastStarts.containsKey(key)) {
-        lastStarts[key] = await db.fetchOne<DateTime?>(
+        lastStarts[key] = await db.fetchOne<DateTime>(
             'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
             [serviceId, key]);
       }
@@ -200,7 +204,7 @@ abstract class Daemon {
               ]
           );
           int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-          await stats.saveStats(processor.db, serviceId, 'queue.' + processor.queue.className, 123, timeMs);
+          await stats.saveStats(serviceId, 'queue', processor, timeMs);
           await processor.db.disconnect();
         });
     }
