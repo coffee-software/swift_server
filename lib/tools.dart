@@ -51,7 +51,7 @@ abstract class Db {
         userName: config.getRequired<String>('database.user'),
         databaseName: config.getRequired<String>('database.database'),
         password: config.getRequired<String>('database.password'),
-        secure: true
+        secure: config.getRequired<bool>('database.secure')
       );
       await connection!.connect();
       //temporary fix for new mysql version
