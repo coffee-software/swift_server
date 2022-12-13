@@ -7,6 +7,7 @@ database:
   database: swift_test
   user: swift_test
   password: swift_test
+  secure: true
 amqp:
   host: localhost
   port: 5672
