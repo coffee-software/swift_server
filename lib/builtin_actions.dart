@@ -1,23 +1,29 @@
 
 import 'server.dart';
 
+class StatusActionTest {
+  dynamic value;
+  bool isOk;
+  StatusActionTest(this.isOk, {this.value});
+}
+
 @ComposeSubtypes
 abstract class StatusActionCheck {
 
   @Inject
   Server get server;
 
-  Future<Map<String,bool>> check(StatusAction action);
+  Future<Map<String,StatusActionTest>> check(StatusAction action);
 }
 
 abstract class StatusActionDbCheck extends StatusActionCheck {
-  Future<Map<String,bool>> check(StatusAction action) async {
-    return {'database' : await action.db.fetchOne<int>('SELECT 1') == 1};
+  Future<Map<String,StatusActionTest>> check(StatusAction action) async {
+    return {'database' : StatusActionTest(await action.db.fetchOne<int>('SELECT 1') == 1)};
   }
 }
 
 abstract class StatusActionTickerCheck extends StatusActionCheck {
-  Future<Map<String,bool>> check(StatusAction action) async {
+  Future<Map<String,StatusActionTest>> check(StatusAction action) async {
     int serviceId = server.config.getRequired<int>('service_id');
     var lastRun = await action.db.fetchOne<DateTime>(
         'SELECT last_run FROM run_jobs WHERE app_id = ? AND job = ?',
@@ -27,9 +33,27 @@ abstract class StatusActionTickerCheck extends StatusActionCheck {
     if (lastRun != null) {
       ret = new DateTime.now().difference(lastRun).inSeconds < 65;
     }
-    return {'ticker' : ret};
+    return {'ticker' : StatusActionTest(ret, value: lastRun.toString())};
   }
 }
+
+abstract class StatusActionErrorsCheck extends StatusActionCheck {
+
+  Future<Map<String,StatusActionTest>> check(StatusAction action) async {
+    int serviceId = server.config.getRequired<int>('service_id');
+    var errorsCount = await action.db.fetchOne<int>(
+        'SELECT COUNT(*) FROM run_errors WHERE app_id = ? AND last_time >= NOW() - INTERVAL 24 HOUR',
+        [serviceId]
+    );
+    //TODO: configurable treshold
+    return {
+      'errors' : StatusActionTest(errorsCount! < 10, value: errorsCount)
+    };
+  }
+
+}
+
+DateTime? _uptimeTimer = null;
 
 /**
  * Status Action
@@ -42,23 +66,35 @@ abstract class StatusAction extends JsonAction {
 
   Future<dynamic> run() async
   {
-    Map<String, bool> checks = {};
+    Map<String, StatusActionTest> checks = {};
     for (var key in allChecks.keys) {
       try {
         checks.addAll(await allChecks[key]!.check(this));
       } catch (e) {
-        checks[key] = false;
+        checks[key] = StatusActionTest(false);
       }
     }
-
-    var healthy = checks.values.reduce((a, b) => a && b);
+    if (_uptimeTimer == null) {
+      _uptimeTimer = DateTime.now();
+    }
+    var healthy = checks.values.map((a)=>a.isOk).reduce((a, b) => a && b);
     if (!healthy) {
       this.responseStatus = HttpStatus.serviceUnavailable;
     }
+    var now = DateTime.now();
+    Map checksInfo = {};
+    checks.forEach((key, value) {
+      checksInfo[key] = {
+        'ok': value.isOk,
+        'value': value.value
+      };
+    });
+
     return {
-      'time': DateTime.now().toString(),
+      'time': now.toString(),
+      'uptime': now.difference(_uptimeTimer!).inSeconds.toDouble() / (60 * 60 * 24),
       'healthy': healthy,
-      'checks': checks
+      'checks': checksInfo
     };
   }
 
