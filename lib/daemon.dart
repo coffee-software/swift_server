@@ -179,8 +179,9 @@ abstract class Daemon {
     amqpConsumers = [];
     for (var processorName in allQueueProcessors.allClassNames) {
         var processor = createQueueProcessor(processorName);
+
         amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
-        amqp.Consumer consumer = await amqpQueue.consume();
+        amqp.Consumer consumer = await amqpQueue.consume(noAck: false);
         amqpConsumers.add(consumer);
         await consumer.listen((amqp.AmqpMessage message) async {
           var processor = createQueueProcessor(processorName);
@@ -206,6 +207,7 @@ abstract class Daemon {
           int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
           await stats.saveStats(serviceId, 'queue', processor, timeMs);
           await processor.db.disconnect();
+          message.ack();
         });
     }
   }

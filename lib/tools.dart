@@ -2,6 +2,7 @@ library c7server;
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:mysql_client/exception.dart';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:mysql_client/mysql_client.dart';
 
@@ -39,31 +40,30 @@ abstract class Db {
   @Inject
   ServerConfig get config;
 
-  MySQLConnection? connection;
+  MySQLConnection? _connection;
 
   int counter = 0;
 
   Future<MySQLConnection> getConnection() async {
-    if (connection == null) {
-      connection = await MySQLConnection.createConnection(
+    if (_connection == null) {
+      _connection = await MySQLConnection.createConnection(
         host: config.getRequired<String>('database.host'),
         port: config.getRequired<int>('database.port'),
         userName: config.getRequired<String>('database.user'),
         databaseName: config.getRequired<String>('database.database'),
         password: config.getRequired<String>('database.password'),
-        secure: config.getRequired<bool>('database.secure')
+        secure: config.getRequired<bool>('database.secure'),
+        //maxConnections: 10
       );
-      await connection!.connect();
-      //temporary fix for new mysql version
-      //await Future.delayed(Duration(milliseconds: 1));
+      await _connection!.connect();
     }
-    return connection!;
+    return _connection!;
   }
 
   Future<void> disconnect() async {
-    if (connection != null) {
-      var tmpConnection = connection;
-      connection = null;
+    if (_connection != null) {
+      var tmpConnection = _connection;
+      _connection = null;
       await tmpConnection!.close();
     }
   }
@@ -118,13 +118,29 @@ abstract class Db {
   }
 
   Future<IResultSet> _prepareAndExecute(String sql, [List<dynamic>? values]) async {
-    if (values == null) {
-      return await (await this.getConnection()).execute(sql);
+    var connection = await this.getConnection();
+    int retried = 0;
+    while (retried <= 1) {
+      try {
+        if (values == null) {
+          return await connection.execute(sql);
+        }
+        var stmt = await connection.prepare(sql);
+        var ret = await stmt.execute(values);
+        await stmt.deallocate();
+        return ret;
+      } on MySQLClientException catch (e) {
+        //connection was closed. retrying once
+        if (!connection.connected) {
+          _connection = null;
+          retried++;
+          connection = await this.getConnection();
+        } else {
+          rethrow;
+        }
+      }
     }
-    var stmt = await (await this.getConnection()).prepare(sql);
-    var ret = await stmt.execute(values);
-    await stmt.deallocate();
-    return ret;
+    throw new MySQLClientException('can not retry');
   }
 }
 
