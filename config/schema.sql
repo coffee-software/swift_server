@@ -20,7 +20,7 @@ CREATE TABLE `run_errors` (
   `last_request` text,
   `comment` text,
   PRIMARY KEY (`app_id`,`handler`,`location`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Table structure for table `run_jobs`
@@ -33,7 +33,7 @@ CREATE TABLE `run_jobs` (
   `run_count` int NOT NULL DEFAULT '1',
   `last_run` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`app_id`,`job`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Table structure for table `run_queues`
@@ -46,7 +46,7 @@ CREATE TABLE `run_queues` (
   `process_count` int NOT NULL DEFAULT '1',
   `last_process` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`app_id`,`queue`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Table structure for table `run_stats`
@@ -65,4 +65,4 @@ CREATE TABLE `run_stats` (
   `total_time` float NOT NULL,
   PRIMARY KEY (`time`,`app_id`,`sub_id`,`handler`),
   KEY `handler` (`handler`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
