@@ -2,13 +2,13 @@ datadir: .
 port: 9123
 debug: true
 database:
-  host: localhost
+  host: database
   port: 3306
   database: swift_test
   user: swift_test
   password: swift_test
-  secure: true
+  secure: false
 amqp:
-  host: localhost
+  host: amqp
   port: 5672
 service_id: 1
