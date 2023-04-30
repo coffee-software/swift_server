@@ -15,7 +15,7 @@ abstract class Queue<T> {
   @Inject
   ServerConfig get config;
 
-  String get queueName => className + '.' + config.getRequired<int>('service_id').toString();
+  String get queueName => config.getRequired<String>('amqp.prefix') + className;
 
   Future postMessage(T message) async {
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(

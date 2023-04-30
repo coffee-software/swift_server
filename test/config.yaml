@@ -11,4 +11,5 @@ database:
 amqp:
   host: amqp
   port: 5672
+  prefix: test_
 service_id: 1
