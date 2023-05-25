@@ -87,6 +87,23 @@ abstract class HttpAction implements StatsAction {
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
   // ignore: unused_element
+  void _setPostArgsIntRequired(Map json, String name, int field) {
+    if (!json.containsKey(name)) {
+      throw new HttpRequestException('Missing required parameter ' + name);
+    }
+    field = json[name];
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(PostArg)
+  // ignore: unused_element
+  void _setPostArgsIntOptional(Map json, String name, int? field) {
+    field = (json.containsKey(name) ? json[name] : null);
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(PostArg)
+  // ignore: unused_element
   void _setPostArgsMapRequired(Map json, String name, Map field) {
     if (!json.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
