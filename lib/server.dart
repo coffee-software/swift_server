@@ -404,7 +404,7 @@ abstract class Server {
       );
       await action.db.disconnect();
     }
-    print("${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms]");
+    print("${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
   }
 
 }
