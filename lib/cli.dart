@@ -13,6 +13,7 @@ export 'tools.dart';
 export 'mailer.dart';
 
 const CliArg = true;
+const CliParameters = true;
 
 /**
  * Single Command
@@ -37,6 +38,20 @@ abstract class Command {
     field = args[name];
   }
 
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
+  void _setCliArgsStringOptional(ArgResults args, String name, String? field) {
+    field = args[name];
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliParameters)
+  // ignore: unused_element
+  void _setCliArgsListRequired(ArgResults args, String name, List<String> field) {
+    field = args.rest.sublist(1);
+  }
+
   @Compile
   void configureCliArgs(ArgParser parser);
 
@@ -47,6 +62,12 @@ abstract class Command {
     parser.addOption(name, mandatory:true);
   }
 
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
+  void _configureCliArgsStringOptional(ArgParser parser, String name, String? field) {
+    parser.addOption(name, mandatory:false);
+  }
 }
 
 /**
