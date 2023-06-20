@@ -18,6 +18,8 @@ import 'config.dart';
 export 'config.dart';
 import 'tools.dart';
 export 'tools.dart';
+import 'cache.dart';
+export 'cache.dart';
 
 export 'builtin_actions.dart';
 export 'queues.dart';
@@ -348,7 +350,7 @@ abstract class Server {
     print('datadir: $datadir port: $port');
     HttpServer server = await HttpServer.bind(InternetAddress.anyIPv4, port);
     print("listening on http://*:$port");
-    server.listen(handleRequest);
+    server.listen(handleRequestWithTimeout);
   }
 
   void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
@@ -365,6 +367,18 @@ abstract class Server {
       json['trace'] = trace.toString();
     }
     request.response.write(jsonEncode(json));
+  }
+
+  Future handleRequestWithTimeout(HttpRequest request) {
+    return handleRequest(request);
+    //TODO:
+    return handleRequest(request).timeout(
+        new Duration(milliseconds: 500),
+        onTimeout: () => {
+          request.response.close()
+          //writeError(request, HttpStatus.requestTimeout, request.uri.toString())
+        },
+    );
   }
 
   Future handleRequest(HttpRequest request) async {

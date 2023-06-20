@@ -13,6 +13,7 @@ dependencies:
   dart_amqp: ^0.2.3
   args: ^2.3.0
   mailer: ^5.2.0
+  redis: ^3.1.0
 dev_dependencies:
   test: any
   path: any
