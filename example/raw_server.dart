@@ -1,4 +1,4 @@
-import 'package:swift_server/server.dart';
+import 'package:swift_server/api.dart';
 
 part 'raw_server.c.dart';
 

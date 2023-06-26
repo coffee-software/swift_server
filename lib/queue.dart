@@ -29,25 +29,3 @@ abstract class Queue<T> {
     await client.close();
   }
 }
-
-
-
-@ComposeSubtypes
-abstract class QueueProcessor<Q extends Queue, T> implements StatsAction {
-
-  @Create
-  late Db db;
-
-  int statsSubId = 0;
-
-  @InjectClassName
-  String get className;
-
-  @Inject
-  ServerConfig get config;
-
-  @Inject
-  Q get queue;
-
-  Future processMessage(T message);
-}

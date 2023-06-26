@@ -2,7 +2,7 @@ library swift_composer.test;
 
 import 'dart:async';
 
-import 'package:swift_server/server.dart';
+import 'package:swift_server/api.dart';
 import 'package:test/test.dart';
 import '../example/raw_server.dart' as raw_server;
 import '../example/raw_daemon.dart' as raw_daemon;

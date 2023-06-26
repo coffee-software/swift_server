@@ -5,7 +5,7 @@ import 'dart:convert';
 
 import 'dart:typed_data';
 
-import 'package:swift_server/server.dart';
+import 'api.dart';
 
 Future<MockResponse> getServerResponse(Server server, MockRequest request) async {
   await server.handleRequest(request);
