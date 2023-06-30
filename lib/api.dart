@@ -46,6 +46,9 @@ abstract class HttpAction implements StatsAction {
   @Require
   late HttpRequest request;
 
+  @Require
+  late List<String> pathArgs;
+
   @Compile
   void setPostArgs(Map json);
 
@@ -181,17 +184,43 @@ class HttpRequestException extends HttpException {
 }
 
 @ComposeSubtypes
+abstract class PostAction extends HttpAction {
+  int responseStatus = HttpStatus.ok;
+
+  late Map<String, String> postArgs;
+
+  Future<String> run();
+
+  Encoding get encoding => utf8;
+
+  Future prepareArguments() async {
+    String body = await utf8.decoder.bind(request).join('');
+    postArgs = Uri.splitQueryString(body, encoding:encoding);
+    setPostArgs(postArgs);
+    setGetArgs(request.uri.queryParameters);
+  }
+
+  Future handleRequest() async {
+    await prepareArguments();
+    responseStatus = HttpStatus.ok;
+    String ret = await this.run();
+    request.response.statusCode = responseStatus;
+    //TODO content type for post actions
+    request.response.headers.contentType = ContentType.text;
+    request.response.write(ret);
+  }
+}
+
+@ComposeSubtypes
 abstract class JsonAction extends HttpAction {
 
   int responseStatus = HttpStatus.ok;
+  Map postArgs = {};
 
-  Future prapareData() async {}
   Future run();
 
   Future prepareArguments() async {
     String body = await utf8.decoder.bind(request).join('');
-    //String method = request.uri.pathSegments.length > 1 ? request.uri.pathSegments[1] : 'index';
-    Map postArgs = {};
     if (body.length > 0) {
       var x = json.decode(body);
       if (x is Map){
@@ -245,7 +274,7 @@ class RouteNode {
 abstract class Router implements Pluggable {
 
   @SubtypeFactory
-  HttpAction createAction(String className, HttpRequest request);
+  HttpAction createAction(String className, HttpRequest request, List<String> pathArgs);
 
   @Inject
   SubtypesOf<HttpAction> get allActions;
@@ -288,7 +317,7 @@ abstract class Router implements Pluggable {
     if (className == null) {
       return null;
     }
-    HttpAction action = createAction(className, request);
+    HttpAction action = createAction(className, request, pathArgs);
     return action;
   }
 
