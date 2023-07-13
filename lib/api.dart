@@ -188,14 +188,15 @@ abstract class PostAction extends HttpAction {
   int responseStatus = HttpStatus.ok;
 
   late Map<String, String> postArgs;
+  late String rawBody;
 
   Future<String> run();
 
   Encoding get encoding => utf8;
 
   Future prepareArguments() async {
-    String body = await utf8.decoder.bind(request).join('');
-    postArgs = Uri.splitQueryString(body, encoding:encoding);
+    rawBody = await utf8.decoder.bind(request).join('');
+    postArgs = Uri.splitQueryString(rawBody, encoding:encoding);
     setPostArgs(postArgs);
     setGetArgs(request.uri.queryParameters);
   }
