@@ -14,6 +14,7 @@ abstract class Mailer {
   Future<bool> sendEmail(
       String subject,
       String bodyHtml,
+      String bodyText,
       Iterable<String> recipients,
       {
         Iterable<String> replyTo = const []
@@ -22,9 +23,9 @@ abstract class Mailer {
 
     var type = config.getRequired<String>('mailer.type');
     if (type == 'smtp') {
-      return await _sendSmtpEmail(subject, bodyHtml, recipients, replyTo: replyTo);
+      return await _sendSmtpEmail(subject, bodyHtml, bodyText, recipients, replyTo: replyTo);
     } else if (type == 'print') {
-      return await _printEmail(subject, bodyHtml, recipients, replyTo: replyTo);
+      return await _printEmail(subject, bodyText, recipients, replyTo: replyTo);
     } else {
       throw Exception('undefined mailer type');
     }
@@ -32,7 +33,7 @@ abstract class Mailer {
 
   Future<bool> _printEmail(
       String subject,
-      String bodyHtml,
+      String bodyText,
       Iterable<String> recipients,
       {
         Iterable<String> replyTo = const []
@@ -43,7 +44,7 @@ abstract class Mailer {
     print('# recipients: ' + recipients.join(','));
     print('# replyTo: ' + replyTo.join(','));
     print('##################    BODY       ##################');
-    print(bodyHtml);
+    print(bodyText);
     print('###################################################');
     return true;
   }
@@ -51,6 +52,7 @@ abstract class Mailer {
   Future<bool> _sendSmtpEmail(
       String subject,
       String bodyHtml,
+      String bodyText,
       Iterable<String> recipients,
       {
         Iterable<String> replyTo = const []
@@ -72,11 +74,7 @@ abstract class Mailer {
       )
       ..recipients.addAll(recipients)
       ..subject = subject
-    //TODO html stripper:
-      ..text = bodyHtml.replaceAll(RegExp(
-          r"<[^>]*>",
-          multiLine: true
-      ), '')
+      ..text = bodyText
       ..html = bodyHtml;
 
     if (replyTo.isNotEmpty) {
