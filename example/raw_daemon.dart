@@ -26,14 +26,14 @@ abstract class TestJob extends Job {
 
 abstract class TestQueue1Processor extends QueueProcessor<TestQueue1, int> {
 
-  Future processMessage(int message) async {
+  Future processMessage(dynamic message) async {
     print('queue 1 message: ' + message.toString());
   }
 }
 
 abstract class TestQueue2Processor extends QueueProcessor<TestQueue2, String> {
 
-  Future processMessage(String message) async {
+  Future processMessage(dynamic message) async {
     if (message == 'exception') {
       throw new Exception('test exception');
     }

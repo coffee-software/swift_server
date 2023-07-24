@@ -21,5 +21,5 @@ abstract class QueueProcessor<Q extends Queue, T> implements StatsAction {
   @Inject
   Q get queue;
 
-  Future processMessage(T message);
+  Future processMessage(dynamic message);
 }
