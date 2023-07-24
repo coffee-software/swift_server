@@ -31,21 +31,23 @@ abstract class MailerAttachment {
 
 class MailerFileAttachment extends MailerAttachment {
   String mime;
+  String name;
   File file;
-  MailerFileAttachment(this.file, this.mime);
+  MailerFileAttachment(this.file, this.name, this.mime);
 
   Attachment _getAttachment() {
-    return FileAttachment(file, contentType: mime);
+    return FileAttachment(file, fileName: name, contentType: '$mime; name="$name"');
   }
 }
 
 class MailerBase64Attachment extends MailerAttachment {
   String mime;
+  String name;
   String contents;
-  MailerBase64Attachment(this.contents, this.mime);
+  MailerBase64Attachment(this.contents, this.name, this.mime);
 
   Attachment _getAttachment() {
-    return StreamAttachment(Stream.value(List<int>.from(base64Decode(contents))), mime);
+    return StreamAttachment(Stream.value(List<int>.from(base64Decode(contents))), '$mime; name="$name"', fileName: name);
   }
 }
 
