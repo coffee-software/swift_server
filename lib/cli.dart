@@ -46,6 +46,13 @@ abstract class Command {
   }
 
   @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
+  void _setCliArgsBool(ArgResults args, String name, bool field) {
+    field = args[name];
+  }
+
+  @CompileFieldsOfType
   @AnnotatedWith(CliParameters)
   // ignore: unused_element
   void _setCliArgsListRequired(ArgResults args, String name, List<String> field) {
@@ -67,6 +74,13 @@ abstract class Command {
   // ignore: unused_element
   void _configureCliArgsStringOptional(ArgParser parser, String name, String? field) {
     parser.addOption(name, mandatory:false);
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
+  void _configureCliArgsBool(ArgParser parser, String name, bool field) {
+    parser.addFlag(name);
   }
 }
 
