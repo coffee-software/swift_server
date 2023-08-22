@@ -6,6 +6,7 @@ import 'package:args/args.dart';
 export 'package:args/args.dart';
 
 import 'package:swift_composer/swift_composer.dart';
+import 'package:swift_server/annotations.dart';
 export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 export 'package:swift_server/config.dart';
@@ -19,10 +20,6 @@ const CliArg = true;
 const CliParameter = true;
 const CliParameters = true;
 
-class HelpText {
-  final String value;
-  const HelpText(this.value);
-}
 
 /**
  * Single Command
