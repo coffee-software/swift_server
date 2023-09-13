@@ -77,7 +77,7 @@ abstract class Command {
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
   void _setCliArgsParameterString(ArgResults args, String name, String field) {
-    field = args.rest[paramI++];
+    field = args.rest[this.paramI++];
   }
 
   @Compile
