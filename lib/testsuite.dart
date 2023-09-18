@@ -1,4 +1,4 @@
-library swift_composer.test;
+library swift_server.test;
 
 import 'dart:async';
 import 'dart:convert';
@@ -13,10 +13,14 @@ Future<MockResponse> getServerResponse(Server server, MockRequest request) async
 }
 
 class MockHeaders extends HttpHeaders {
+
+  Map<String, String> data;
+
+  MockHeaders(this.data);
+
   @override
   List<String>? operator [](String name) {
-    // TODO: implement []
-    throw UnimplementedError();
+    return data.containsKey(name) ? [data[name]!] : null;
   }
 
   @override
@@ -133,7 +137,7 @@ class MockResponse extends StringBuffer implements HttpResponse {
   }
 
   @override
-  HttpHeaders headers = new MockHeaders();
+  HttpHeaders headers = new MockHeaders(new Map<String,String>());
 
   @override
   Future redirect(Uri location, {int status = HttpStatus.movedTemporarily}) {
@@ -161,17 +165,17 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   @override
   HttpHeaders headers;
 
-  MockRequest.get(String path) :
+  MockRequest.get(String path, {Map<String,String> headers = const {}}) :
         method = "GET",
         uri = Uri(path:path),
-        headers = MockHeaders(),
+        this.headers = MockHeaders(headers),
         super(new Stream.empty()) {
   }
 
-  MockRequest.post(String path, String body) :
+  MockRequest.post(String path, String body, {Map<String,String> headers = const {}}) :
         method = "POST",
         uri = Uri(path:path),
-        headers = MockHeaders(),
+        this.headers = MockHeaders(headers),
         super(Stream.fromIterable(Uint8List.fromList(body.codeUnits).map((e) => Uint8List.fromList([e])))) {
   }
 
