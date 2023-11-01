@@ -60,8 +60,7 @@ class MockHeaders extends HttpHeaders {
 
   @override
   String? value(String name) {
-    // TODO: implement value
-    throw UnimplementedError();
+    return data.containsKey(name) ? data[name]! : null;
   }
 
 }
