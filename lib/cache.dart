@@ -13,6 +13,8 @@ abstract class RedisCache {
   ServerConfig get config;
 
   Command? command;
+  String? _prefix;
+  String get prefix => _prefix ?? (_prefix = config.getOptional<String>('redis.prefix', ''));
 
   Future<Command> getClient() async {
     if (command == null) {
@@ -30,15 +32,15 @@ abstract class RedisCache {
   }
 
   Future<void> clearValue(String key) async {
-    await _exec([ "DEL", key ]);
+    await _exec([ "DEL", prefix + key ]);
   }
 
   Future<void> setValue(String key, Map value) async {
-    await _exec([ "SET", key, jsonEncode(value) ]);
+    await _exec([ "SET", prefix + key, jsonEncode(value) ]);
   }
 
   Future<Map?> getValue(String key) async {
-    String? ret = await _exec([ "GET", key ]);
+    String? ret = await _exec([ "GET", prefix + key ]);
     return ret == null ? ret : jsonDecode(ret);
   }
 }
