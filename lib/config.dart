@@ -13,8 +13,26 @@ class ServerConfig {
   @Create
   late Map data;
 
+  Map mergeMaps(Map target, Map source) {
+    Map ret = Map.from(target);
+    source.forEach((key, value) {
+      if ((value is Map) && (target.containsKey(key)) && (target[key] is Map)) {
+        ret[key] = mergeMaps(target[key] as Map, value);
+      } else {
+        ret[key] = value;
+      }
+    });
+    return ret;
+  }
+
   load(String path) async {
-    data = loadYaml(await new File(path).readAsString());
+    var configFile = new File(path);
+    var overrideFile = new File(path.replaceFirst('.yaml', '.override.yaml'));
+    data = loadYaml(await configFile.readAsString());
+    if (overrideFile.existsSync()) {
+      var overrideData = loadYaml(await overrideFile.readAsString());
+      data = mergeMaps(data, overrideData);
+    }
   }
 
   T _get<T>(String code, bool required, T? defaultValue) {
