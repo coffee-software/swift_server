@@ -73,7 +73,7 @@ abstract class Mailer {
     if (type == 'smtp') {
       return await _sendSmtpEmail(subject, bodyHtml, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
     } else if (type == 'print') {
-      return await _printEmail(subject, bodyText, recipients, replyTo: replyTo);
+      return await _printEmail(subject, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
     } else {
       throw Exception('undefined mailer type');
     }
@@ -84,6 +84,8 @@ abstract class Mailer {
       String bodyText,
       Iterable<String> recipients,
       {
+        Map<String, MailerAttachment> images = const {},
+        Map<String, MailerAttachment> attachments = const {},
         Iterable<String> replyTo = const []
       }
       ) async {
@@ -91,10 +93,11 @@ abstract class Mailer {
     print('# subject: ' + subject);
     print('# recipients: ' + recipients.join(','));
     print('# replyTo: ' + replyTo.join(','));
-    print('##################    BODY       ##################');
+    print('##################   TEXT BODY   ##################');
     print(bodyText);
     print('###################################################');
-    //TODO print attachments info
+    print('images: ' + images.keys.join(', '));
+    print('attachments: ' + attachments.keys.join(', '));
     print('###################################################');
     return true;
   }
