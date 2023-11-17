@@ -2,6 +2,7 @@ library c7server;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
@@ -51,6 +52,17 @@ class MailerBase64Attachment extends MailerAttachment {
   }
 }
 
+class MailAddress {
+
+  final String? name;
+  final String email;
+
+  const MailAddress(this.email, [this.name]);
+
+  @override
+  String toString() => "${name ?? ''} <$email>";
+}
+
 @Compose
 abstract class Mailer {
 
@@ -61,11 +73,11 @@ abstract class Mailer {
       String subject,
       String bodyHtml,
       String bodyText,
-      Iterable<String> recipients,
+      Iterable<MailAddress> recipients,
       {
         Map<String, MailerAttachment> images = const {},
         Map<String, MailerAttachment> attachments = const {},
-        Iterable<String> replyTo = const []
+        Iterable<MailAddress> replyTo = const []
       }
       ) async {
 
@@ -82,11 +94,11 @@ abstract class Mailer {
   Future<bool> _printEmail(
       String subject,
       String bodyText,
-      Iterable<String> recipients,
+      Iterable<MailAddress> recipients,
       {
         Map<String, MailerAttachment> images = const {},
         Map<String, MailerAttachment> attachments = const {},
-        Iterable<String> replyTo = const []
+        Iterable<MailAddress> replyTo = const []
       }
       ) async {
     print('################## SENDING EMAIL ##################');
@@ -106,11 +118,11 @@ abstract class Mailer {
       String subject,
       String bodyHtml,
       String bodyText,
-      Iterable<String> recipients,
+      Iterable<MailAddress> recipients,
       {
         Map<String, MailerAttachment> images = const {},
         Map<String, MailerAttachment> attachments = const {},
-        Iterable<String> replyTo = const []
+        Iterable<MailAddress> replyTo = const []
       }
       ) async {
 
@@ -130,22 +142,28 @@ abstract class Mailer {
       mailAttachments.add(attachments[a]!.getAsAttachment(a));
     };
 
+    int randomIdPart = new Random().nextInt((1<<32) - 1);
+
     final emailMessage = Message()
       ..from = Address(
           config.getRequired<String>('mailer.sender.email'),
           config.getRequired<String>('mailer.sender.name')
       )
-      ..recipients.addAll(recipients)
+      ..recipients.addAll(recipients.map((e) => Address(e.email, e.name)))
       ..subject = subject
       ..text = bodyText
       ..html = bodyHtml
       ..attachments = mailAttachments;
 
+    Map<String, dynamic> headers = {
+      'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-${randomIdPart}@${Platform.localHostname}>'
+    };
+
     if (replyTo.isNotEmpty) {
-      emailMessage.headers = {
-        'Reply-To': replyTo.join(',')
-      };
+      headers['Reply-To'] = replyTo.map((e) => Address(e.email, e.name));
     }
+
+    emailMessage.headers = headers;
 
     //TODO retry on MailerException catch (e)
     await send(emailMessage, smtpServer);
