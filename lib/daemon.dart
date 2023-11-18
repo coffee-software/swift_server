@@ -235,9 +235,13 @@ abstract class Daemon {
           processQueuesIsolate,
           new DaemonIsolateArgs(receivePort.sendPort, this.config),
         );*/
+      } else {
+        print ('no queues');
       }
       if (allJobs.allClassNames.isNotEmpty) {
         processJobsIsolate();
+      } else {
+        print ('no jobs');
       }
     }
   }
