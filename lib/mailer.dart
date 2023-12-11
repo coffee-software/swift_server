@@ -129,9 +129,10 @@ abstract class Mailer {
     var smtpServer = new SmtpServer(
         config.getRequired<String>('mailer.hostName'),
         name: config.getRequired<String>('mailer.sender.email'),
-        username: config.getRequired<String>('mailer.username'),
-        password: config.getRequired<String>('mailer.password'),
-        port: config.getRequired<int>('mailer.port')
+        username: config.getRequired<String?>('mailer.username'),
+        password: config.getRequired<String?>('mailer.password'),
+        port: config.getRequired<int>('mailer.port'),
+        allowInsecure: config.getRequired<String?>('mailer.username') == null
     );
 
     List<Attachment> mailAttachments = [];

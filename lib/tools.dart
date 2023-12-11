@@ -161,4 +161,25 @@ abstract class Net {
     }
     return jsonDecode(contents.toString());
   }
+
+  Future<dynamic> postJson(String url, dynamic params) async {
+    var client = new HttpClient();
+    var body = json.encode(params);
+    Map<String,String> headers = {
+      'Content-type' : 'application/json',
+      'Accept': 'application/json',
+    };
+    final req = await client.postUrl(Uri.parse(url));
+    headers.forEach((key, value) {
+      req.headers.add(key, value);
+    });
+    req.write(body);
+    var response = await req.close();
+    client.close();
+    final contents = StringBuffer();
+    await for (var data in response.transform(utf8.decoder)) {
+      contents.write(data);
+    }
+    return jsonDecode(contents.toString());
+  }
 }
