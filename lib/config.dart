@@ -55,8 +55,11 @@ class ServerConfig {
         return defaultValue!;
       }
     }
-    return ret[path.last];
-
+    var value = ret[path.last];
+    if (value is YamlList) {
+      value = value.toList();
+    }
+    return value;
   }
 
   T getRequired<T>(String code) {
