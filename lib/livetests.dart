@@ -3,7 +3,7 @@ library swift_server.test;
 import 'dart:io';
 import 'dart:convert';
 
-Future<Map> getJsonFromApi(String domain, String path, {Map? post, Map? headers}) async {
+Future<HttpClientResponse> getResponseFromApi(String domain, String path, {Map? post, Map? headers}) async {
   Map<String, String> env = Platform.environment;
   var domainSuffix = env['SWIFT_SUFFIX'] ?? '';
   var proto = domainSuffix.isEmpty ? 'https' : 'http';
@@ -18,11 +18,17 @@ Future<Map> getJsonFromApi(String domain, String path, {Map? post, Map? headers}
   }
   if (post != null) {
     String body = json.encode(post);
-    request.headers.set(HttpHeaders.contentTypeHeader, "application/json; charset=UTF-8");
+    request.headers.set(
+        HttpHeaders.contentTypeHeader, "application/json; charset=UTF-8");
     request.headers.set(HttpHeaders.contentLengthHeader, body.length);
     request.write(body);
   }
-  var response = await request.close();
+  return await request.close();
+}
+
+Future<Map> getJsonFromApi(String domain, String path, {Map? post, Map? headers}) async {
+
+  var response = await getResponseFromApi(domain, path, post:post, headers:headers);
   String responseBody = await response.transform(const Utf8Decoder()).join();
   return jsonDecode(responseBody);
 }
