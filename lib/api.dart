@@ -232,14 +232,17 @@ abstract class JsonAction extends HttpAction {
     setGetArgs(request.uri.queryParameters);
   }
 
-  Future handleRequest() async {
-    await prepareArguments();
-    responseStatus = HttpStatus.ok;
-    String ret = json.encode(await this.run());
-
+  Future outputResponse(dynamic response) async {
+    String ret = json.encode(response);
     request.response.statusCode = responseStatus;
     request.response.headers.contentType = ContentType.json;
     request.response.write(ret);
+  }
+
+  Future handleRequest() async {
+    await prepareArguments();
+    responseStatus = HttpStatus.ok;
+    await outputResponse(await this.run());
   }
 }
 
