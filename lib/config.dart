@@ -52,7 +52,7 @@ class ServerConfig {
       if (required) {
         throw new Exception('missing required config value: ${path.last}');
       } else {
-        return defaultValue!;
+        return defaultValue as T;
       }
     }
     var value = ret[path.last];
