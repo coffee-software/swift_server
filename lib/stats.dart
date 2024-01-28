@@ -1,6 +1,5 @@
 
 import 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/config.dart';
 import 'package:swift_server/tools.dart';
 
 

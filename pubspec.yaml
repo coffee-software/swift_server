@@ -14,7 +14,7 @@ dependencies:
   args: ^2.3.0
   mailer: ^6.0.1
   redis: ^4.0.0
+  path: ^1.9.0
 dev_dependencies:
   test: any
-  path: any
   build_runner: any

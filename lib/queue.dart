@@ -1,11 +1,6 @@
-import 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/config.dart';
 import 'package:dart_amqp/dart_amqp.dart' as amqp;
 import 'package:swift_server/daemon.dart';
 import 'dart:convert';
-
-import 'package:swift_server/tools.dart';
-
 
 @ComposeSubtypes
 abstract class Queue<T> {

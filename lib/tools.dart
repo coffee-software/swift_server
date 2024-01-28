@@ -129,7 +129,7 @@ abstract class Db {
         var ret = await stmt.execute(values);
         await stmt.deallocate();
         return ret;
-      } on MySQLClientException catch (e) {
+      } on MySQLClientException catch(_) {
         //connection was closed. retrying once
         if (!connection.connected) {
           _connection = null;

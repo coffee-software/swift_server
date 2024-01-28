@@ -19,7 +19,6 @@ export 'server.dart';
 export 'builtin_actions.dart';
 export 'mailer.dart';
 
-import 'queue.dart';
 export 'queue.dart';
 
 const PostArg = true;
