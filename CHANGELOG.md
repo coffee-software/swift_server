@@ -1,3 +1,19 @@
+# 0.3.0
+
+* use mysql_client as db client
+* add mailer
+* add redis cache support
+* add named locks
+* fix status checks
+* update post and get params handling
+* add cli command args
+* refactor to support cli/daemon/api
+* support for posting form encoded post
+* fixes for new swift_composer compilation
+* add testing tools
+* support for override config
+* minor bugfixes
+
 # 0.2.1
 
 * jobs bugfix

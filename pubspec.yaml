@@ -2,18 +2,18 @@ name: swift_server
 description: Simple microservices framework using swift_composer.
   Create servers, daemons and cli tools with a layer to access mysql db, amqp and files.
   Used by https://swift.shop
-version: 0.2.1
+version: 0.3.0
 homepage: https://github.com/coffee-software/swift_server
 environment:
-  sdk: ">=2.17.0 <3.0.0"
+  sdk: ">=2.17.0 <4.0.0"
 dependencies:
-  swift_composer: ^0.7.0
+  swift_composer: ^0.8.1
   yaml: ^3.0.0
   mysql_client: ^0.0.27
   dart_amqp: ^0.2.3
   args: ^2.3.0
   mailer: ^6.0.1
-  redis: ^3.1.0
+  redis: ^4.0.0
 dev_dependencies:
   test: any
   path: any
