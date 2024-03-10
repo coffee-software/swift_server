@@ -1,9 +1,10 @@
-library c7server;
+library swift_server;
 
 import 'dart:io';
 export 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'http_status_codes.dart';
 import 'package:args/args.dart';
@@ -335,6 +336,7 @@ abstract class ServerArgs {
     var parser = ArgParser();
     parser.addOption('config');
     parser.addOption('port');
+    parser.addOption('threads');
     this.args = parser.parse(arguments);
     var argsPort = this.args!['port'];
     if (argsPort != null) {
@@ -343,13 +345,32 @@ abstract class ServerArgs {
       }
       port = int.tryParse(argsPort);
     }
+    var argsThreads = this.args!['threads'];
+    if (argsThreads != null) {
+      if (int.tryParse(argsThreads) == null || int.parse(argsThreads) < 1) {
+        throw new Exception('--threads value must be a positive integer.');
+      }
+      threads = int.tryParse(argsThreads);
+    }
+
   }
 
   int? port;
+  int? threads;
 
   String get configPath {
     return this.args!['config'];
   }
+
+}
+
+class ServerThreadArgs {
+
+  int threadId;
+  int port;
+  String configPath;
+
+  ServerThreadArgs(this.threadId, this.port, this.configPath);
 
 }
 
@@ -369,17 +390,45 @@ abstract class Server {
   @Inject
   Stats get stats;
 
+  int threadId = 1;
+
   String get datadir => config.getRequired<String>('datadir');
-  int get port => args.port ?? config.getRequired<int>('port');
+
 
   Future serve(List<String> arguments) async {
-    args.parse(arguments);
+
     print("starting HTTP server...");
+    args.parse(arguments);
     await config.load(args.configPath);
-    print('datadir: $datadir port: $port');
-    HttpServer server = await HttpServer.bind(InternetAddress.anyIPv4, port);
-    print("listening on http://*:$port");
-    server.listen(handleRequestWithTimeout);
+
+    int port = args.port ?? config.getRequired<int>('port');
+    int threads = args.threads ?? config.getOptional<int>('threads', 1);
+
+    print('datadir: ${config.getRequired<String>('datadir')} port: $port threads: ${threads}');
+
+    _startServerIsolate(new ServerThreadArgs(1, port, args.configPath));
+    for (var i = 2; i < threads + 1; i++) {
+      await Isolate.spawn(_startServerIsolate, new ServerThreadArgs(i, port, args.configPath));
+    }
+    await ProcessSignal.sigterm.watch().first;
+    print("HTTP server terminated");
+  }
+
+  void _startServerIsolate(ServerThreadArgs args) async {
+
+    await config.load(args.configPath);
+    threadId = args.threadId;
+    print("thread ${threadId} listening on http://*:${args.port}");
+
+    HttpServer server = await HttpServer.bind(
+      InternetAddress.anyIPv4,
+      args.port,
+      shared: true,
+    );
+
+    await for (final request in server) {
+      await handleRequestWithTimeout(request);
+    }
   }
 
   void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
@@ -398,14 +447,15 @@ abstract class Server {
     request.response.write(jsonEncode(json));
   }
 
-  Future handleRequestWithTimeout(HttpRequest request) {
-    return handleRequest(request);
-    //TODO:
+  Future handleRequestWithTimeout(HttpRequest request) async {
     return handleRequest(request).timeout(
-        new Duration(milliseconds: 500),
-        onTimeout: () => {
-          request.response.close()
-          //writeError(request, HttpStatus.requestTimeout, request.uri.toString())
+        new Duration(milliseconds: 1500),
+        onTimeout: () {
+          print('TODO: handle timeout');
+          //try {
+          //  writeError(request, HttpStatus.requestTimeout, 'request timeout');
+          //}
+          //request.response.close();
         },
     );
   }
@@ -433,7 +483,12 @@ abstract class Server {
             'unknown error occured',
             trace: stacktrace
         );
-        await errorHandler.handleError(action.db, serviceId, 'action.' + actionName, error, stacktrace);
+        try {
+          await errorHandler.handleError(
+              action.db, serviceId, 'action.' + actionName, error, stacktrace);
+        } catch (e) {
+          print(e);
+        }
       } finally {
         queries = action.db.counter;
         await action.db.disconnect();
@@ -441,13 +496,17 @@ abstract class Server {
     }
     request.response.close();
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-    if (action != null) {
-      await stats.saveStats(
-          serviceId, 'action', action, timeMs
-      );
-      await action.db.disconnect();
+    try {
+      if (action != null) {
+        await stats.saveStats(
+            serviceId, 'action', action, timeMs
+        );
+        await action.db.disconnect();
+      }
+    } catch(e) {
+      print(e);
     }
-    print("${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
+    print("T${threadId} ${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
   }
 
 }

@@ -1,4 +1,4 @@
-library c7server;
+library swift_server;
 
 import 'dart:io';
 import 'package:swift_composer/swift_composer.dart';

@@ -1,4 +1,4 @@
-library c7server;
+library swift_server;
 
 import 'dart:convert';
 import 'dart:io';
