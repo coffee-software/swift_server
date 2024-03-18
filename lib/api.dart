@@ -404,7 +404,7 @@ abstract class Server {
     int port = args.port ?? config.getRequired<int>('port');
     int threads = args.threads ?? config.getOptional<int>('threads', 1);
 
-    print('datadir: ${config.getRequired<String>('datadir')} port: $port threads: ${threads}');
+    print('datadir: $datadir port: $port threads: $threads');
 
     _startServerIsolate(new ServerThreadArgs(1, port, args.configPath));
     for (var i = 2; i < threads + 1; i++) {
