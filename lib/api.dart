@@ -404,18 +404,18 @@ abstract class Server {
     int port = args.port ?? config.getRequired<int>('port');
     int threads = args.threads ?? config.getOptional<int>('threads', 1);
 
-    print('datadir: $datadir port: $port threads: $threads');
-
+    print('PID: ${pid} datadir: $datadir port: $port threads: $threads');
     _startServerIsolate(new ServerThreadArgs(1, port, args.configPath));
+    List<Isolate> isolates = [];
     for (var i = 2; i < threads + 1; i++) {
-      await Isolate.spawn(_startServerIsolate, new ServerThreadArgs(i, port, args.configPath));
+      isolates.add(await Isolate.spawn(_startServerIsolate, new ServerThreadArgs(i, port, args.configPath)));
     }
     await ProcessSignal.sigterm.watch().first;
-    print("HTTP server terminated");
+    print("terminating HTTP server");
+    exit(0);
   }
 
   void _startServerIsolate(ServerThreadArgs args) async {
-
     await config.load(args.configPath);
     threadId = args.threadId;
     print("thread ${threadId} listening on http://*:${args.port}");
@@ -425,10 +425,7 @@ abstract class Server {
       args.port,
       shared: true,
     );
-
-    await for (final request in server) {
-      await handleRequestWithTimeout(request);
-    }
+    server.listen(handleRequestWithTimeout);
   }
 
   void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
