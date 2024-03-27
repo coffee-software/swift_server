@@ -425,7 +425,7 @@ abstract class Server {
       args.port,
       shared: true,
     );
-    server.listen(handleRequestWithTimeout);
+    server.listen(handleRequest);
   }
 
   void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
@@ -444,19 +444,6 @@ abstract class Server {
     request.response.write(jsonEncode(json));
   }
 
-  Future handleRequestWithTimeout(HttpRequest request) async {
-    return handleRequest(request).timeout(
-        new Duration(milliseconds: 1500),
-        onTimeout: () {
-          print('TODO: handle timeout');
-          //try {
-          //  writeError(request, HttpStatus.requestTimeout, 'request timeout');
-          //}
-          //request.response.close();
-        },
-    );
-  }
-
   Future handleRequest(HttpRequest request) async {
     int start = new DateTime.now().millisecondsSinceEpoch;
     int serviceId = config.getRequired<int>('service_id');
@@ -468,7 +455,11 @@ abstract class Server {
     } else {
       try {
         actionName = action.className;
-        await action.handleRequest();
+        //TODO: add timeout option
+        await action.handleRequest();//.timeout(new Duration(milliseconds: 1000));
+
+      } on TimeoutException catch (error, stacktrace) {
+        writeError(request, HttpStatus.requestTimeout, 'Request Timeout', trace: stacktrace);
       } on Redirect catch (error) {
         request.response.redirect(new Uri.http(request.uri.authority, error.uri));
       } on HttpException catch (error, stacktrace) {

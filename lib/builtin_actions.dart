@@ -114,9 +114,9 @@ abstract class SchemaAction extends JsonAction {
         'params': {}
       };
     }
-    node.subNodes.forEach((k, node){
-      ret.addAll(routeNodeToMap(path + '/' + k, node));
-    });
+    for (var k in node.subNodes.keys){
+      ret.addAll(routeNodeToMap(path + '/' + k, node.subNodes[k]!));
+    }
     return ret;
   }
 
