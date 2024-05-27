@@ -162,17 +162,22 @@ abstract class Net {
     return jsonDecode(contents.toString());
   }
 
-  Future<dynamic> postJson(String url, dynamic params) async {
+  Future<dynamic> postJson(String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
     var client = new HttpClient();
     var body = json.encode(params);
     Map<String,String> headers = {
       'Content-type' : 'application/json',
       'Accept': 'application/json',
     };
+    extraHeaders.forEach((key, value) {
+      headers[key] = value;
+    });
+
     final req = await client.postUrl(Uri.parse(url));
     headers.forEach((key, value) {
       req.headers.add(key, value);
     });
+
     req.write(body);
     var response = await req.close();
     client.close();
@@ -182,4 +187,20 @@ abstract class Net {
     }
     return jsonDecode(contents.toString());
   }
+
+  Future<List<int>> get(String url, {Map<String, String> headers = const {}}) async {
+    var client = new HttpClient();
+    final req = await client.getUrl(Uri.parse(url));
+    headers.forEach((key, value) {
+      req.headers.add(key, value);
+    });
+    var response = await req.close();
+    client.close();
+    List<int> bytes = [];
+    await for (var data in response) {
+      bytes.addAll(data);
+    }
+    return bytes;
+  }
+
 }
