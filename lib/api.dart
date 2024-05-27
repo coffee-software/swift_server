@@ -431,9 +431,12 @@ abstract class Server {
   void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
     //TODO depend on request accepted header
     //request.response.write("<pre>${new HtmlEscape().convert(stackTrace.toString())}</pre>");
-    request.response.statusCode = code;
-    request.response.headers.contentType = ContentType.json;
+    try {
+      request.response.statusCode = code;
+      request.response.headers.contentType = ContentType.json;
+    } catch (e) {
 
+    }
     var json = {
       'error': "${code} ${httpStatusMessage[code]!}",
       'message': message
