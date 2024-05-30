@@ -146,13 +146,37 @@ abstract class Db {
 
 @Compose
 abstract class Net {
-  Future<dynamic> getJson(String url, {Map<String, String> headers = const {}}) async {
+
+  Future<dynamic> _json(String method, String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
     var client = new HttpClient();
-    var req = await client.getUrl(Uri.parse(url));
+    Map<String,String> headers = {
+      'Content-type' : 'application/json',
+      'Accept': 'application/json',
+    };
+    extraHeaders.forEach((key, value) {
+      headers[key] = value;
+    });
+
+    HttpClientRequest req;
+    switch (method) {
+      case 'get':
+        req = await client.getUrl(Uri.parse(url));
+        break;
+      case 'put':
+        req = await client.putUrl(Uri.parse(url));
+        break;
+      default:
+        req = await client.postUrl(Uri.parse(url));
+        break;
+    }
+
     headers.forEach((key, value) {
       req.headers.add(key, value);
     });
-
+    if (params != null) {
+      var body = json.encode(params);
+      req.write(body);
+    }
     var response = await req.close();
     client.close();
     final contents = StringBuffer();
@@ -162,30 +186,16 @@ abstract class Net {
     return jsonDecode(contents.toString());
   }
 
+  Future<dynamic> getJson(String url, {Map<String, String> extraHeaders = const {}}) async {
+    return await _json('get', url, null, extraHeaders: extraHeaders);
+  }
+
+  Future<dynamic> putJson(String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
+    return await _json('put', url, params, extraHeaders: extraHeaders);
+  }
+
   Future<dynamic> postJson(String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
-    var client = new HttpClient();
-    var body = json.encode(params);
-    Map<String,String> headers = {
-      'Content-type' : 'application/json',
-      'Accept': 'application/json',
-    };
-    extraHeaders.forEach((key, value) {
-      headers[key] = value;
-    });
-
-    final req = await client.postUrl(Uri.parse(url));
-    headers.forEach((key, value) {
-      req.headers.add(key, value);
-    });
-
-    req.write(body);
-    var response = await req.close();
-    client.close();
-    final contents = StringBuffer();
-    await for (var data in response.transform(utf8.decoder)) {
-      contents.write(data);
-    }
-    return jsonDecode(contents.toString());
+    return await _json('post', url, params, extraHeaders: extraHeaders);
   }
 
   Future<List<int>> get(String url, {Map<String, String> headers = const {}}) async {
