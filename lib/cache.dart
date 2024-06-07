@@ -48,4 +48,19 @@ abstract class RedisCache {
     String? ret = await _exec([ "GET", prefix + key ]);
     return ret == null ? ret : jsonDecode(ret);
   }
+
+  Future<void> setString(String key, String value, {int expireIn=-1}) async {
+    var args = [ "SET", prefix + key, value ];
+    if (expireIn != -1) {
+      args.add('EX');
+      args.add(expireIn.toString());
+    }
+    await _exec(args);
+  }
+
+  Future<String?> getString(String key) async {
+    String? ret = await _exec([ "GET", prefix + key ]);
+    return ret;
+  }
+
 }
