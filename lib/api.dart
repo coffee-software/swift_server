@@ -30,12 +30,12 @@ const PathArg = true;
  * Single HTTP API Endpoint
  */
 @ComposeSubtypes
-abstract class HttpAction implements StatsAction {
+abstract class HttpAction {
 
   @InjectClassName
   String get className;
 
-  int statsSubId = 0;
+  Stats? stats;
 
   @Inject
   Server get server;
@@ -387,8 +387,6 @@ abstract class Server {
   ServerArgs get args;
   @Inject
   ErrorHandler get errorHandler;
-  @Inject
-  Stats get stats;
 
   int threadId = 1;
 
@@ -456,6 +454,7 @@ abstract class Server {
     if (action == null) {
       writeError(request, HttpStatus.notFound, request.uri.toString());
     } else {
+      action.stats = Stats(config, serviceId, 'action', action.className);
       try {
         actionName = action.className;
         //TODO: add timeout option
@@ -489,8 +488,8 @@ abstract class Server {
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
     try {
       if (action != null) {
-        await stats.saveStats(
-            serviceId, 'action', action, timeMs
+        action.stats?.saveStats(
+            action.db.counter, timeMs
         );
         await action.db.disconnect();
       }

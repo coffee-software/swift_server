@@ -5,12 +5,12 @@ import 'config.dart';
 import 'stats.dart';
 
 @ComposeSubtypes
-abstract class QueueProcessor<Q extends Queue, T> implements StatsAction {
+abstract class QueueProcessor<Q extends Queue, T> {
 
   @Create
   late Db db;
 
-  int statsSubId = 0;
+  Stats? stats;
 
   @InjectClassName
   String get className;

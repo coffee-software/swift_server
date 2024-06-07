@@ -26,12 +26,12 @@ export 'mailer.dart';
  * Single Cron Job
  */
 @ComposeSubtypes
-abstract class Job implements StatsAction {
+abstract class Job {
 
   @InjectClassName
   String get className;
 
-  int statsSubId = 0;
+  Stats? stats;
 
   @Create
   late Db db;
@@ -91,9 +91,6 @@ abstract class Daemon {
   @Inject
   ErrorHandler get errorHandler;
 
-  @Inject
-  Stats get stats;
-
   @SubtypeFactory
   Job createJob(String className);
 
@@ -109,6 +106,7 @@ abstract class Daemon {
   Future runJob(String key) async {
     var job = createJob(key);
     int serviceId = config.getRequired<int>('service_id');
+    job.stats = new Stats(config, serviceId, 'job', job.className);
     int start = new DateTime.now().millisecondsSinceEpoch;
     try {
       await job.run();
@@ -123,8 +121,8 @@ abstract class Daemon {
         ]
     );
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-    await stats.saveStats(serviceId, 'job', job, timeMs);
     await job.db.disconnect();
+    job.stats?.saveStats(job.db.counter, timeMs);
   }
 
   Future step() async {
@@ -180,13 +178,13 @@ abstract class Daemon {
     amqpConsumers = [];
     for (var processorName in allQueueProcessors.allClassNames) {
         var processor = createQueueProcessor(processorName);
-
         amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
         amqp.Consumer consumer = await amqpQueue.consume(noAck: false);
         amqpConsumers.add(consumer);
         await consumer.listen((amqp.AmqpMessage message) async {
           var processor = createQueueProcessor(processorName);
           int start = new DateTime.now().millisecondsSinceEpoch;
+          processor.stats = new Stats(config, serviceId, 'queue', processor.className);
           try {
             var decodedMessage = json.decode(message.payloadAsString);
             while (concurrentProcessors > 10) {
@@ -206,8 +204,8 @@ abstract class Daemon {
               ]
           );
           int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-          await stats.saveStats(serviceId, 'queue', processor, timeMs);
           await processor.db.disconnect();
+          processor.stats?.saveStats(processor.db.counter, timeMs);
           message.ack();
         });
     }

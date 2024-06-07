@@ -1,46 +1,81 @@
 
-import 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/tools.dart';
+import 'package:influxdb_client/api.dart';
+import 'package:swift_server/config.dart';
 
 
-abstract class StatsAction {
-  Db get db;
-  int get statsSubId;
-  String get className;
-}
+class Stats {
 
-@Compose
-abstract class Stats {
+  ServerConfig config;
+  String prefix;
+  String className;
+  int serviceId;
 
-  Future saveStats(int appId, String prefix, StatsAction action, int timeMs) async {
-      int interval = 7 * 60;
-      await action.db.query(
-          'INSERT INTO run_stats SET '
-              '`time` = FROM_UNIXTIME((UNIX_TIMESTAMP(NOW()) div ($interval)) * ($interval)), '
-              '`app_id` = ?, '
-              '`sub_id` = ?, '
-              '`handler` = ?, '
-              '`count` = 1, '
-              '`max_queries` = ?, '
-              '`total_queries` = ?, '
-              '`max_time` = ?, '
-              '`total_time` = ? '
-              ' ON DUPLICATE KEY UPDATE '
-              '`count` = `count` + 1, '
-              '`max_queries` = GREATEST(`max_queries`, VALUES(`max_queries`)), '
-              '`total_queries` = `total_queries` + VALUES(`total_queries`), '
-              '`max_time` = GREATEST(`max_time`, VALUES(`max_time`)), '
-              '`total_time` = `total_time` + VALUES(`total_time`) ',
-          [
-            appId,
-            action.statsSubId,
-            prefix + '.' + action.className,
-            action.db.counter,
-            action.db.counter,
-            timeMs,
-            timeMs
-          ]
-      );
-      action.db.counter = 0;
+
+  Stats(this.config, this.serviceId, this.prefix, this.className);
+
+  Map<String, String> tags = {};
+
+  var points = List<Point>.empty(growable: true);
+
+  addTag(String tagName, String value) async {
+    tags[tagName] = value;
+  }
+
+  String get pointPrefix => config.getOptional<String>('influx.pointPrefix', '') + '_';
+
+  Future addPoint(String key, int value) async {
+    points.add(Point(pointPrefix + key).addField('value', value));
+  }
+
+  Future saveStats(int queriesCount, int timeMs) async {
+
+    if (config.getOptional<String>('influx.url', 'none') == 'none') {
+      return;
+    }
+
+    var client = InfluxDBClient(
+        url: config.getRequired<String>('influx.url'),
+        token: config.getRequired<String>('influx.token'),
+        org: config.getRequired<String>('influx.org'),
+        bucket: config.getRequired<String>('influx.bucket')
+    );
+
+    // Create write service
+    var writeApi = client.getWriteService(WriteOptions().merge(
+        precision: WritePrecision.s,
+        batchSize: 100,
+        flushInterval: 5000,
+        gzip: true));
+
+
+    var time = DateTime.now().toUtc();
+    var taggedPoint = Point(pointPrefix + prefix + '_api')
+        .addTag('service_id', serviceId.toString())
+        .addTag('action', className)
+        .addField('response_time', timeMs)
+        .addField('db_queries', queriesCount);
+
+
+    var untaggedPoint = Point(pointPrefix + prefix + '_api')
+        .addTag('service_id', 'ALL')
+        .addTag('action', 'ALL')
+        .addField('response_time', timeMs)
+        .addField('db_queries', queriesCount);
+
+    tags.forEach((key, value) {
+      taggedPoint.addTag(key, value);
+      untaggedPoint.addTag(key, 'ALL');
+    });
+
+    points.add(taggedPoint);
+    points.add(untaggedPoint);
+
+    for (var i=0; i<points.length; i++) {
+      points[i].time(time);
+    }
+    await writeApi.write(points).catchError((exception) {
+      print('STATS SAVE ERROR');
+      print(exception);
+    });
   }
 }
