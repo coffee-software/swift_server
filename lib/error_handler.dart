@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
@@ -10,7 +11,7 @@ abstract class ErrorHandler {
   @Inject
   ServerConfig get config;
 
-  Future handleError(Db db, int appId, String handler, error, stacktrace) async {
+  Future handleError(Db db, int appId, String handler, error, stacktrace, {HttpRequest? request, String? requestBody}) async {
 
     if (config.getRequired<bool>('debug')) {
       print('###############################################################');
@@ -20,6 +21,8 @@ abstract class ErrorHandler {
       print(stacktrace.toString());
       print('###############################################################');
     }
+
+    String debugRequest = request != null ? """${request.method} ${request.requestedUri}\n${request.headers.toString()}\n${requestBody}""" : '';
     await db.query(
         'INSERT INTO run_errors SET '
             '`app_id` = ?, '
@@ -47,7 +50,7 @@ abstract class ErrorHandler {
               .first,
           error.toString(),
           stacktrace.toString(),
-          jsonEncode('todo: request')
+          debugRequest
         ]
     );
   }

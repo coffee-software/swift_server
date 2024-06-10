@@ -43,6 +43,8 @@ abstract class HttpAction {
   @Create
   late Db db;
 
+  String? rawBody;
+
   @Require
   late HttpRequest request;
 
@@ -51,6 +53,8 @@ abstract class HttpAction {
 
   @Compile
   void setPostArgs(Map json);
+
+  Future reportError(error, stackTrace) => server.errorHandler.handleError(db, server.config.getRequired<int>('service_id'), 'action.' + className, error, stackTrace, request: request, requestBody: rawBody);
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
@@ -188,15 +192,13 @@ abstract class PostAction extends HttpAction {
   int responseStatus = HttpStatus.ok;
 
   late Map<String, String> postArgs;
-  late String rawBody;
-
   Future<String> run();
 
   Encoding get encoding => utf8;
 
   Future prepareArguments() async {
     rawBody = await utf8.decoder.bind(request).join('');
-    postArgs = Uri.splitQueryString(rawBody, encoding:encoding);
+    postArgs = Uri.splitQueryString(rawBody!, encoding:encoding);
     setPostArgs(postArgs);
     setGetArgs(request.uri.queryParameters);
   }
@@ -221,9 +223,9 @@ abstract class JsonAction extends HttpAction {
   Future run();
 
   Future prepareArguments() async {
-    String body = await utf8.decoder.bind(request).join('');
-    if (body.length > 0) {
-      var x = json.decode(body);
+    rawBody = await utf8.decoder.bind(request).join('');
+    if (rawBody!.length > 0) {
+      var x = json.decode(rawBody!);
       if (x is Map){
         postArgs = x;
       }
@@ -475,7 +477,7 @@ abstract class Server {
         );
         try {
           await errorHandler.handleError(
-              action.db, serviceId, 'action.' + actionName, error, stacktrace);
+              action.db, serviceId, 'action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
         } catch (e) {
           print(e);
         }
