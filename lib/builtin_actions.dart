@@ -41,13 +41,13 @@ abstract class StatusActionErrorsCheck extends StatusActionCheck {
 
   Future<Map<String,StatusActionTest>> check(StatusAction action) async {
     int serviceId = server.config.getRequired<int>('service_id');
-    var errorsCount = await action.db.fetchOne<int>(
-        'SELECT COUNT(*) FROM run_errors WHERE app_id = ? AND last_time >= NOW() - INTERVAL 24 HOUR',
+    var errorsCount = await action.db.fetchOne<String>(
+        'SELECT SUM(current_count) FROM run_errors WHERE app_id = ?',
         [serviceId]
     );
-    //TODO: configurable treshold
+    var intCount = errorsCount != null ? BigInt.parse(errorsCount).toInt() : 0;
     return {
-      'errors' : StatusActionTest(errorsCount! < 10, value: errorsCount)
+      'errors' : StatusActionTest(intCount < 10, value: intCount)
     };
   }
 
