@@ -10,7 +10,7 @@ CREATE TABLE `run_errors` (
   `status` varchar(255) NOT NULL,
   `current_count` int(11) NOT NULL DEFAULT 1,
   `total_count` int(11) NOT NULL DEFAULT 1,
-  `first_time` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `first_time` datetime DEFAULT current_timestamp(),
   `first_message` text DEFAULT NULL,
   `first_stack` text DEFAULT NULL,
   `first_request` text DEFAULT NULL,
