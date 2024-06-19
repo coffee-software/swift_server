@@ -35,6 +35,9 @@ abstract class RedisCache {
     await _exec([ "DEL", prefix + key ]);
   }
 
+  /**
+   * expireIn in seconds
+   */
   Future<void> setValue(String key, Map value, {int expireIn=-1}) async {
     var args = [ "SET", prefix + key, jsonEncode(value) ];
     if (expireIn != -1) {
