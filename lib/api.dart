@@ -1,7 +1,7 @@
 library swift_server;
 
 import 'dart:io';
-export 'dart:io';
+export 'dart:io' hide HttpException;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
@@ -171,20 +171,6 @@ abstract class HttpAction {
 class Redirect implements Exception {
   String uri;
   Redirect(this.uri);
-}
-
-class HttpException implements Exception {
-  int code;
-  String message;
-  HttpException(this.code, this.message);
-}
-
-class HttpUnauthorizedException extends HttpException {
-  HttpUnauthorizedException() : super(HttpStatus.unauthorized, 'Unauthorised');
-}
-
-class HttpRequestException extends HttpException {
-  HttpRequestException(String message) : super(HttpStatus.unprocessableEntity, message);
 }
 
 @ComposeSubtypes
