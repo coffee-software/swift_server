@@ -13,14 +13,26 @@ abstract class Queue<T> {
 
   String get queueName => config.getRequired<String>('amqp.prefix') + className;
 
-  Future postMessage(T message) async {
+  amqp.Client getClient() {
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(
         host: config.getRequired<String>('amqp.host'),
         port: config.getRequired<int>('amqp.port')
     );
-    amqp.Client client = amqp.Client(settings: settings);
-    amqp.Channel channel = await client.channel();
-    amqp.Queue queue = await channel.queue(queueName);
+    return amqp.Client(settings: settings);
+  }
+
+  Future postMessages(List<T> messages) async {
+    var client = getClient();
+    amqp.Queue queue = await (await client.channel()).queue(queueName);
+    for (var m in messages) {
+      queue.publish(jsonEncode(m));
+    }
+    await client.close();
+  }
+
+  Future postMessage(T message) async {
+    var client = getClient();
+    amqp.Queue queue = await (await client.channel()).queue(queueName);
     queue.publish(jsonEncode(message));
     await client.close();
   }
