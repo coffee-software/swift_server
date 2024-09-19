@@ -227,7 +227,7 @@ abstract class JsonAction extends HttpAction {
     request.response.write(ret);
   }
 
-  Future handleRequest() async {
+  Future<void> handleRequest() async {
     await prepareArguments();
     responseStatus = HttpStatus.ok;
     await outputResponse(await this.run());
