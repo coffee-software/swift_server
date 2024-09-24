@@ -21,7 +21,7 @@ abstract class Queue<T> {
     return amqp.Client(settings: settings);
   }
 
-  Future postMessages(List<T> messages) async {
+  Future postMessages(Iterable<T> messages) async {
     var client = getClient();
     amqp.Queue queue = await (await client.channel()).queue(queueName);
     for (var m in messages) {
