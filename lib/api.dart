@@ -479,7 +479,6 @@ abstract class Server {
         action.stats?.saveStats(
             action.db.counter, timeMs
         );
-        await action.db.disconnect();
       }
     } catch(e) {
       print(e);
