@@ -11,6 +11,7 @@ export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 export 'package:swift_server/config.dart';
 import 'package:path/path.dart' as path;
+import 'package:swift_server/server.dart';
 
 import 'tools.dart';
 export 'tools.dart';
@@ -165,6 +166,9 @@ abstract class Cli {
     return parser;
   }
 
+  @Inject
+  RedisCache get redisCache;
+
   Future run(List<String> arguments) async {
     if (arguments.length < 1) {
       print('available commands:');
@@ -188,6 +192,7 @@ abstract class Cli {
 
     await command.run();
     await db.disconnect();
+    await redisCache.disconnect();
   }
 }
 
