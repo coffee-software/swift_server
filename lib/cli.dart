@@ -16,6 +16,7 @@ import 'package:swift_server/server.dart';
 import 'tools.dart';
 export 'tools.dart';
 export 'mailer.dart';
+export 'cache.dart';
 
 const CliArg = true;
 const CliParameter = true;
