@@ -169,4 +169,26 @@ void main() async {
       });
     });
 
+    test('net tools', () async {
+      HttpServer server = await HttpServer.bind(
+        InternetAddress.anyIPv4,
+        18256
+      );
+      StreamSubscription echo = server.listen((request) {
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write('{\"ret\":\"${request.headers['headerX']}\"}');
+        request.response.close();
+      });
+
+      var ret1 = await raw_cli.$om.cli.net.getHtml('http://localhost:18256/test', extraHeaders: {'headerX': 'value'});
+      expect(ret1, '{"ret":"[value]"}');
+      
+      var ret2 = await raw_cli.$om.cli.net.postJson('http://localhost:18256/test', {'test': 'test'}, extraHeaders: {'headerX': 'value'});
+      expect(ret2, {"ret":"[value]"});
+
+      var ret3 = await raw_cli.$om.cli.net.getRaw('http://localhost:18256/test', extraHeaders: {'headerX': 'value'});
+      expect(ret3, [123, 34, 114, 101, 116, 34, 58, 34, 91, 118, 97, 108, 117, 101, 93, 34, 125]);
+
+      echo.cancel();
+    });
 }

@@ -198,12 +198,34 @@ abstract class Net {
     return await _json('post', url, params, extraHeaders: extraHeaders);
   }
 
-  Future<List<int>> get(String url, {Map<String, String> headers = const {}}) async {
+  Future<List<int>> _raw(String method, String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
     var client = new HttpClient();
-    final req = await client.getUrl(Uri.parse(url));
+    HttpClientRequest req;
+    Map<String,String> headers = {};
+    if (params != null) {
+      headers['Content-type'] = 'application/x-www-form-urlencoded';
+    }
+    extraHeaders.forEach((key, value) {
+      headers[key] = value;
+    });
+
+    switch (method) {
+      case 'get':
+        req = await client.getUrl(Uri.parse(url));
+        break;
+      case 'put':
+        req = await client.putUrl(Uri.parse(url));
+        break;
+      default:
+        req = await client.postUrl(Uri.parse(url));
+        break;
+    }
     headers.forEach((key, value) {
       req.headers.add(key, value);
     });
+    if (params != null) {
+      req.writeAll(params.map((k,v) => MapEntry(k, Uri.encodeComponent(k) + '=' + Uri.encodeComponent(v))).values, '&');
+    }
     var response = await req.close();
     client.close();
     List<int> bytes = [];
@@ -211,6 +233,27 @@ abstract class Net {
       bytes.addAll(data);
     }
     return bytes;
+  }
+
+  @deprecated
+  Future<List<int>> get(String url, {Map<String, String> extraHeaders = const {}}) async {
+    return await getRaw(url, extraHeaders:extraHeaders);
+  }
+
+  Future<List<int>> getRaw(String url, {Map<String, String> extraHeaders = const {}}) async {
+    return await _raw('get', url, null, extraHeaders:extraHeaders);
+  }
+
+  Future<List<int>> postRaw(String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
+    return await _raw('post', url, params, extraHeaders:extraHeaders);
+  }
+
+  Future<String> getHtml(String url, {Map<String, String> extraHeaders = const {}}) async {
+    return new String.fromCharCodes(await _raw('get', url, null, extraHeaders:extraHeaders));
+  }
+
+  Future<String> postHtml(String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
+    return new String.fromCharCodes(await _raw('post', url, params, extraHeaders:extraHeaders));
   }
 
 }
