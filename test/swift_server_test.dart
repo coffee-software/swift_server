@@ -76,6 +76,30 @@ void main() async {
       await raw_daemon.$om.daemon.db.disconnect();
     });
 
+    test('database tools', () async {
+
+      await raw_daemon.$om.daemon.db.query('DROP TABLE IF EXISTS `test_getIdOrInsert`');
+      await raw_daemon.$om.daemon.db.query("""
+            CREATE TABLE `test_getIdOrInsert` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `tag` varchar(512) NOT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `tag` (`tag`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+      """);
+      String testTag1 = 'test123';
+      String testTag2 = 'test1234';
+
+      int id = await raw_daemon.$om.daemon.db.getIdOrInsert('test_getIdOrInsert', '`tag` = ?', [ testTag1 ], '`tag` = ?', [ testTag1 ]);
+      expect(id, 1);
+      id = await raw_daemon.$om.daemon.db.getIdOrInsert('test_getIdOrInsert', '`tag` = ?', [ testTag1 ], '`tag` = ?', [ testTag1 ]);
+      expect(id, 1);
+      id = await raw_daemon.$om.daemon.db.getIdOrInsert('test_getIdOrInsert', '`tag` = ?', [ testTag2 ], '`tag` = ?', [ testTag2 ]);
+      expect(id, 2);
+
+      await raw_daemon.$om.daemon.db.disconnect();
+    });
+
     test('daemon jobs test', overridePrint(() async {
       //force jobs to be executed
       await raw_daemon.$om.daemon.db.query('DELETE FROM run_jobs WHERE job != ?', ['banana']);

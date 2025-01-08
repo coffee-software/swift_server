@@ -103,6 +103,20 @@ abstract class Db {
     return ret;
   }
 
+  /*
+   * this is a simple atomic verison of INSERT INTO .. ON DUPLCIATE KEY UPDATE id=LAST_INSERT_ID(`id`) that returns primary key and does not create large gaps in auto_increment
+   */
+  Future<int> getIdOrInsert(String tableName, String where, List<Object?> whereArgs, String set, List<Object?> setArgs) async {
+    var id = await fetchOne<int>(
+        'SELECT `id` FROM $tableName WHERE $where', whereArgs
+    );
+    if (id == null) {
+      //this ON DUPLICATE KEY is here so this wont have to run in transaction
+      id = (await query('INSERT INTO $tableName SET $set ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(`id`);',setArgs)).lastInsertID.toInt();
+    }
+    return id;
+  }
+
   Future<T?> fetchOne<T>(String sql, [List<Object?>? values]) async {
     counter++;
     dynamic ret = null;
