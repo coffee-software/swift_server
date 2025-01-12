@@ -11,6 +11,7 @@ export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 export 'package:swift_server/config.dart';
 import 'package:path/path.dart' as path;
+import 'package:swift_server/error_handler.dart';
 import 'package:swift_server/server.dart';
 
 import 'tools.dart';
@@ -142,6 +143,9 @@ abstract class Cli {
 
   @Inject
   SubtypesOf<Command> get availableCommands;
+
+  @Inject
+  ErrorHandler get errorHandler;
 
   String commandToClassCode(String command) {
     var bits = command.split(':');
