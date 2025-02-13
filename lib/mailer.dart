@@ -77,13 +77,22 @@ abstract class Mailer {
       {
         Map<String, MailerAttachment> images = const {},
         Map<String, MailerAttachment> attachments = const {},
-        Iterable<MailAddress> replyTo = const []
+        Iterable<MailAddress> replyTo = const [],
+        Iterable<MailAddress> sendFyiTo = const [],
       }
       ) async {
 
     var type = config.getRequired<String>('mailer.type');
     if (type == 'smtp') {
-      return await _sendSmtpEmail(subject, bodyHtml, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
+      var ret = await _sendSmtpEmail(subject, bodyHtml, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
+      if (sendFyiTo.isNotEmpty) {
+        for (var fyiRecipient in sendFyiTo) {
+          String fyiSubject = 'FYI: ' + recipients.join(',') + ' ' + subject;
+          await _sendSmtpEmail(fyiSubject, bodyHtml, bodyText, [fyiRecipient], replyTo: replyTo, images: images, attachments: attachments);
+        }
+      }
+      return ret;
+
     } else if (type == 'print') {
       return await _printEmail(subject, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
     } else {
