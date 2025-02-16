@@ -71,7 +71,7 @@ abstract class StatusAction extends JsonAction {
       try {
         checks.addAll(await allChecks[key]!.check(this));
       } catch (e) {
-        checks[key] = StatusActionTest(false);
+        checks[key] = StatusActionTest(false, value: e.toString());
       }
     }
     if (_uptimeTimer == null) {
