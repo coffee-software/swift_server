@@ -10,6 +10,8 @@ export 'tools.dart';
 export 'annotations.dart';
 
 
+Map sharedServerData = {};
+
 class HttpException implements Exception {
   int code;
   String message;

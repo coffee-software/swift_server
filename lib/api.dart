@@ -357,10 +357,12 @@ class ServerThreadArgs {
   int threadId;
   int port;
   String configPath;
+  Map sharedData;
 
-  ServerThreadArgs(this.threadId, this.port, this.configPath);
+  ServerThreadArgs(this.threadId, this.port, this.configPath, this.sharedData);
 
 }
+
 
 /**
  * Server
@@ -391,10 +393,10 @@ abstract class Server {
     int threads = args.threads ?? config.getOptional<int>('threads', 1);
 
     print('PID: ${pid} datadir: $datadir port: $port threads: $threads');
-    _startServerIsolate(new ServerThreadArgs(1, port, args.configPath));
+    _startServerIsolate(new ServerThreadArgs(1, port, args.configPath, sharedServerData));
     List<Isolate> isolates = [];
     for (var i = 2; i < threads + 1; i++) {
-      isolates.add(await Isolate.spawn(_startServerIsolate, new ServerThreadArgs(i, port, args.configPath)));
+      isolates.add(await Isolate.spawn(_startServerIsolate, new ServerThreadArgs(i, port, args.configPath, sharedServerData)));
     }
     await ProcessSignal.sigterm.watch().first;
     print("terminating HTTP server");
@@ -404,7 +406,8 @@ abstract class Server {
   void _startServerIsolate(ServerThreadArgs args) async {
     await config.load(args.configPath);
     threadId = args.threadId;
-    print("thread ${threadId} listening on http://*:${args.port}");
+    sharedServerData = args.sharedData;
+    print("thread ${threadId}, data ${sharedServerData.length}, listening on http://*:${args.port}");
 
     HttpServer server = await HttpServer.bind(
       InternetAddress.anyIPv4,
