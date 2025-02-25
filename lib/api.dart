@@ -63,6 +63,9 @@ abstract class HttpAction {
     if (!json.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
     }
+    if (!json[name] is String) {
+      throw new HttpRequestException('Wrong required parameter ' + name);
+    }
     field = json[name];
   }
 
@@ -70,7 +73,7 @@ abstract class HttpAction {
   @AnnotatedWith(PostArg)
   // ignore: unused_element
   void _setPostArgsStringOptional(Map json, String name, String? field) {
-    field = (json.containsKey(name) ? json[name] : null);
+    field = ((json.containsKey(name) && json[name] is String) ? json[name] : null);
   }
 
   @CompileFieldsOfType
@@ -162,7 +165,11 @@ abstract class HttpAction {
     if (!queryParameters.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
     }
-    field = int.parse(queryParameters[name]!);
+    try {
+      field = int.parse(queryParameters[name]!);
+    } catch (_) {
+      throw new HttpRequestException('Wrong parameter format ' + name);
+    }
   }
 
   Future handleRequest();
@@ -211,13 +218,23 @@ abstract class JsonAction extends HttpAction {
   Future prepareArguments() async {
     rawBody = await utf8.decoder.bind(request).join('');
     if (rawBody!.length > 0) {
-      var x = json.decode(rawBody!);
-      if (x is Map){
-        postArgs = x;
+      try {
+        var x = json.decode(rawBody!);
+        if (x is Map) {
+          postArgs = x;
+        }
+      } on FormatException catch (_) {
+        throw new HttpRequestException('wrong json format');
       }
     }
     setPostArgs(postArgs);
-    setGetArgs(request.uri.queryParameters);
+    Map<String, String> getParams = {};
+    try {
+      getParams = request.uri.queryParameters;
+    } on FormatException catch (_) {
+      throw new HttpRequestException('malformed get params');
+    }
+    setGetArgs(getParams);
   }
 
   Future outputResponse(dynamic response) async {

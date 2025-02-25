@@ -19,6 +19,12 @@ abstract class ErrorHandler {
       print(error.toString());
       print('###############           Stack Trace           ###############');
       print(stacktrace.toString());
+      print('###############           Catch Trace           ###############');
+      try {
+        throw new Exception("handle trace");
+      } catch (e, stack2) {
+        print(stack2.toString());
+      }
       print('###############################################################');
     }
 
