@@ -436,57 +436,70 @@ abstract class Server {
     request.response.write(jsonEncode(json));
   }
 
-  Future handleRequest(HttpRequest request) async {
-    int start = new DateTime.now().millisecondsSinceEpoch;
-    int serviceId = config.getRequired<int>('service_id');
-    String actionName = 'unknown';
-    HttpAction? action = routing.getForRequest(request);
-    int queries = 0;
-    if (action == null) {
-      writeError(request, HttpStatus.notFound, request.uri.toString());
-    } else {
-      action.stats = Stats(config, serviceId, 'action', action.className);
-      try {
-        actionName = action.className;
-        //TODO: add timeout option
-        await action.handleRequest();//.timeout(new Duration(milliseconds: 1000));
+  @Create
+  late Db db;
 
-      } on TimeoutException catch (error, stacktrace) {
-        writeError(request, HttpStatus.requestTimeout, 'Request Timeout', trace: stacktrace);
-      } on Redirect catch (error) {
-        request.response.redirect(new Uri.http(request.uri.authority, error.uri));
-      } on HttpException catch (error, stacktrace) {
-        writeError(request, error.code, error.message, trace: stacktrace);
-      } catch (error, stacktrace) {
-        writeError(
-            request,
-            HttpStatus.internalServerError,
-            'unknown error occured',
-            trace: stacktrace
-        );
-        try {
-          await errorHandler.handleError(
-              action.db, serviceId, 'action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
-        } catch (e) {
-          print(e);
-        }
-      } finally {
-        queries = action.db.counter;
-        await action.db.disconnect();
-      }
-    }
-    request.response.close();
-    int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+  Future handleRequest(HttpRequest request) async {
+    int? serviceId = null;
+    String actionName = 'unknown';
     try {
+      int start = new DateTime.now().millisecondsSinceEpoch;
+      serviceId = config.getRequired<int>('service_id');
+      HttpAction? action = routing.getForRequest(request);
+      int queries = 0;
+      if (action == null) {
+        writeError(request, HttpStatus.notFound, request.uri.toString());
+      } else {
+        action.stats = Stats(config, serviceId, 'action', action.className);
+        try {
+          actionName = action.className;
+          //TODO: add timeout option
+          await action.handleRequest(); //.timeout(new Duration(milliseconds: 1000));
+
+        } on TimeoutException catch (error, stacktrace) {
+          writeError(request, HttpStatus.requestTimeout, 'Request Timeout', trace: stacktrace);
+        } on Redirect catch (error) {
+          request.response.redirect(new Uri.http(request.uri.authority, error.uri));
+        } on HttpException catch (error, stacktrace) {
+          writeError(request, error.code, error.message, trace: stacktrace);
+        } catch (error, stacktrace) {
+          writeError(
+              request,
+              HttpStatus.internalServerError,
+              'unknown error occured',
+              trace: stacktrace
+          );
+          try {
+            await errorHandler.handleError(db, serviceId, 'action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
+            db.disconnect();
+          } catch (e) {
+            print('CRITICAL! UNHANDLED ERROR');
+            print(e);
+          }
+        } finally {
+          queries = action.db.counter;
+          await action.db.disconnect();
+        }
+      }
+      int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+      print("T${threadId} ${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
+      await request.response.close();
+
       if (action != null) {
         action.stats?.saveStats(
             action.db.counter, timeMs
         );
       }
-    } catch(e) {
-      print(e);
+      
+    } catch (error, stacktrace) {
+      try {
+        await errorHandler.handleError(db, serviceId ?? 0, 'action.' + actionName, error, stacktrace, request: request, requestBody: "TODO");
+        db.disconnect();
+      } catch (e) {
+        print('CRITICAL! UNHANDLED ERROR');
+        print(e);
+      }
     }
-    print("T${threadId} ${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
   }
 
 }
