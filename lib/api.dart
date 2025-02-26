@@ -63,7 +63,7 @@ abstract class HttpAction {
     if (!json.containsKey(name)) {
       throw new HttpRequestException('Missing required parameter ' + name);
     }
-    if (!json[name] is String) {
+    if (!(json[name] is String)) {
       throw new HttpRequestException('Wrong required parameter ' + name);
     }
     field = json[name];
