@@ -66,6 +66,20 @@ abstract class Command {
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
   // ignore: unused_element
+  void _setCliArgsIntRequired(ArgResults args, String name, int field) {
+    field = args[name];
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
+  void _setCliArgsIntOptional(ArgResults args, String name, int? field) {
+    field = args[name] ?? null;
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
   void _setCliArgsBool(ArgResults args, String name, bool field) {
     field = args[name];
   }
@@ -81,7 +95,20 @@ abstract class Command {
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
   void _setCliArgsParameterString(ArgResults args, String name, String field) {
+    if (args.rest.length <= this.paramI) {
+      throw Exception("Missing CLI ARG " + name);
+    }
     field = args.rest[this.paramI++];
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliParameter)
+  // ignore: unused_element
+  void _setCliArgsParameterInt(ArgResults args, String name, int field) {
+    if (args.rest.length <= this.paramI) {
+      throw Exception("Missing CLI ARG " + name);
+    }
+    field = int.parse(args.rest[this.paramI++]);
   }
 
   @Compile
@@ -107,6 +134,20 @@ abstract class Command {
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
   // ignore: unused_element
+  void _configureCliArgsIntRequired(ArgParser parser, String name, int field, {String HelpText_value = ''}) {
+    parser.addOption(name, help: HelpText_value, valueHelp:name, mandatory:true);
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
+  void _configureCliArgsIntOptional(ArgParser parser, String name, int? field, {String HelpText_value = ''}) {
+    parser.addOption(name, help: HelpText_value, valueHelp:name, mandatory:false);
+  }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliArg)
+  // ignore: unused_element
   void _configureCliArgsBool(ArgParser parser, String name, bool field, {String HelpText_value = ''}) {
     parser.addFlag(name, help: HelpText_value);
   }
@@ -117,6 +158,14 @@ abstract class Command {
   void _configureCliParamsString(List<String> params, String name, String field, {String HelpText_value = ''}) {
     params.add(name);
   }
+
+  @CompileFieldsOfType
+  @AnnotatedWith(CliParameter)
+  // ignore: unused_element
+  void _configureCliParamsInt(List<String> params, String name, int field, {String HelpText_value = ''}) {
+    params.add(name);
+  }
+
   @CompileFieldsOfType
   @AnnotatedWith(CliParameters)
   // ignore: unused_element
