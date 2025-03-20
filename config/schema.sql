@@ -47,3 +47,17 @@ CREATE TABLE `run_queues` (
   `last_process` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`app_id`,`queue`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Table structure for table `run_logs`
+--
+
+DROP TABLE IF EXISTS `run_logs`;
+CREATE TABLE `run_logs` (
+  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
+  `type` varchar(63) NOT NULL,
+  `subtype` varchar(127) DEFAULT NULL, --optional
+  `entity_id` int(11) DEFAULT NULL, --optional
+  `message` text NOT NULL,
+  KEY `type` (`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

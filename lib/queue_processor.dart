@@ -21,5 +21,7 @@ abstract class QueueProcessor<Q extends Queue, T> {
   @Inject
   Q get queue;
 
+  Logger get logger => new Logger(db);
+
   Future processMessage(dynamic message);
 }

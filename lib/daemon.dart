@@ -36,6 +36,8 @@ abstract class Job {
   @Create
   late Db db;
 
+  Logger get logger => new Logger(db);
+
   Future run();
 
   int minuteInterval = 5;

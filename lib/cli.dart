@@ -36,6 +36,8 @@ abstract class Command {
   @Inject
   Cli get cli;
 
+  Logger get logger => new Logger(cli.db);
+
   Future run();
 
   int paramI = 1;

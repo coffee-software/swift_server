@@ -34,6 +34,20 @@ abstract class NamedLock {
   }
 }
 
+class Logger {
+  Db db;
+  Logger(this.db);
+
+  Future<void> log(String type, String message, {String? subtype = null, int? entityId = null}) async {
+    await db.query('INSERT INTO `run_logs` SET `type` = ?, `subtype` = ?, `entity_id` = ?, `message` = ?', [
+      type,
+      subtype,
+      entityId,
+      message
+    ]);
+  }
+}
+
 @Compose
 abstract class Db {
 
