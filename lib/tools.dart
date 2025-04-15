@@ -203,7 +203,7 @@ abstract class Net {
     });
     if (params != null) {
       var body = json.encode(params);
-      req.write(body);
+      req.add(utf8.encode(body));
     }
     var response = await req.close();
     client.close();
