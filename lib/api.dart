@@ -456,6 +456,8 @@ abstract class Server {
   @Create
   late Db db;
 
+  Logger get logger => new Logger(db);
+
   Future handleRequest(HttpRequest request) async {
     int? serviceId = null;
     String actionName = 'unknown';
