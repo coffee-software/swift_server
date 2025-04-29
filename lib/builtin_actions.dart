@@ -132,12 +132,22 @@ abstract class SchemaAction extends JsonAction {
  */
 abstract class RobotsTxtAction extends HttpAction {
 
+  //Disallow: /first_url/*/
+  //Disallow: /second_url/*/
+  List<String> getDisallowedUrls() {
+    return [
+      '/'
+    ];
+  }
+
   Future handleRequest() async
   {
     request.response.statusCode = 200;
     request.response.headers.contentType = ContentType.text;
     request.response.writeln('User-agent: *');
-    request.response.writeln('Disallow: /');
+    for (var url in getDisallowedUrls()) {
+      request.response.writeln('Disallow: $url');
+    }
   }
 
 }
