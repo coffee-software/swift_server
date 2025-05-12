@@ -40,7 +40,7 @@ abstract class Command {
 
   Future run();
 
-  int paramI = 1;
+  int paramI = 0;
 
   List<String> get params {
     List<String> params = [];
@@ -216,9 +216,14 @@ abstract class Cli {
     return bits.map((e) => e[0].toLowerCase() + e.substring(1)).join(':');
   }
 
-  ArgParser getCommandArgParser(Command command) {
+  ArgParser getRootArgParser() {
     var parser = ArgParser();
     parser.addOption('config', valueHelp: 'path', help: 'path to config file, defaults to \'config.yaml\'', mandatory:false);
+    return parser;
+  }
+
+  ArgParser getCommandArgParser(Command command) {
+    var parser = ArgParser();
     command.configureCliArgs(parser);
     return parser;
   }
@@ -226,30 +231,50 @@ abstract class Cli {
   @Inject
   RedisCache get redisCache;
 
+  String get executableName => 'cli';
+
+  void printUsage(String error) async {
+    print('Error: ' + error);
+    print('Usage: $executableName <command> [arguments]');
+    print('Global options:');
+    print(argParser!.usage.split('\n').map((l) => '\t' + l).join('\n'));
+    print('Available commands:');
+    availableCommands.allSubtypes.forEach((key, info) {
+      String help = info.annotations.containsKey('HelpText') ? info.annotations['HelpText'] : '';
+      print('\t' + classCodeToCommand(key) + ' ' + allCommands[key]!.params.map((e) => '<$e>').join(' ') + '\t' + help);
+    });
+    print('Run "$executableName help <command>" for more information about a command.');
+  }
+
+  ArgParser? argParser;
+
   Future run(List<String> arguments) async {
-    if (arguments.length < 1) {
-      print('available commands:');
-      availableCommands.allSubtypes.forEach((key, info) {
-        String help = info.annotations.containsKey('HelpText') ? info.annotations['HelpText'] : '';
-        print(classCodeToCommand(key) + ' ' + allCommands[key]!.params.map((e) => '[$e]').join(' ') + '\t' + help);
-      });
-      return;
+    argParser = getRootArgParser();
+    availableCommands.allSubtypes.forEach((key, info) {
+      var command = allCommands[key]!;
+      argParser!.addCommand(classCodeToCommand(key), getCommandArgParser(command));
+    });
+    ArgResults args;
+    String? error;
+    try {
+      args = argParser!.parse(arguments);
+    } on FormatException catch(e) {
+      error = e.message;
+      args = argParser!.parse([]);
     }
-    String classCode = commandToClassCode(arguments[0]);
-    if (!allCommands.containsKey(classCode)) {
-      throw new Exception('unknown command ${arguments[0]}');
+    if (args.command == null) {
+      printUsage(error == null ? 'Unknown command' : error);
+      return 1;
+    } else {
+      await config.load(args['config'] ?? path.dirname(Platform.script.toFilePath()) + '/config.yaml');
+      String classCode = commandToClassCode(args.command!.name!);
+      var command = allCommands[classCode]!;
+      command.setCliArgs(args.command!);
+      await command.run();
+      await db.disconnect();
+      await redisCache.disconnect();
+      return 0;
     }
-    var command = allCommands[classCode]!;
-
-    var parser = getCommandArgParser(command);
-
-    ArgResults args = parser.parse(arguments);
-    await config.load(args['config'] ?? path.dirname(Platform.script.toFilePath()) + '/config.yaml');
-    command.setCliArgs(args);
-
-    await command.run();
-    await db.disconnect();
-    await redisCache.disconnect();
   }
 }
 
@@ -257,7 +282,7 @@ abstract class Cli {
 abstract class Help extends Command {
 
   @CliParameter
-  @HelpText('test')
+  @HelpText('command to display help for')
   late String command;
 
   Future<void> run() async {
@@ -267,8 +292,9 @@ abstract class Help extends Command {
       var parser = cli.getCommandArgParser(commandObj);
       var annotations = cli.availableCommands.allSubtypes[classCode]!.annotations;
       String help = annotations.containsKey('HelpText') ? annotations['HelpText'] : '';
-      print(command + ' [options] ' + commandObj.params.map((e) => '[$e]').join(' ') + '\t' + help);
-      print('detailed options:');
+      print('${cli.executableName} $command [options] ' + commandObj.params.map((e) => '<$e>').join(' '));
+      print(help);
+      print('Detailed options:');
       print(parser.usage);
     } else {
       print('unknown command $command');
