@@ -90,7 +90,7 @@ abstract class Command {
   @AnnotatedWith(CliParameters)
   // ignore: unused_element
   void _setCliArgsListRequired(ArgResults args, String name, List<String> field) {
-    field = args.rest.sublist(1);
+    field = args.rest.sublist(0);
   }
 
   @CompileFieldsOfType
