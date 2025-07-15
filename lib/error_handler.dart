@@ -28,7 +28,13 @@ abstract class ErrorHandler {
       print('###############################################################');
     }
 
-    String debugRequest = request != null ? """${request.method} ${request.requestedUri}\n${request.headers.toString()}\n${requestBody}""" : '';
+    String debugRequest = '';
+    if (request != null) {
+      debugRequest += """${request.method} ${request.requestedUri}\n${request.headers.toString()}\n""";
+    }
+    if (requestBody != null) {
+      debugRequest += requestBody;
+    }
     await db.query(
         'INSERT INTO run_errors SET '
             '`app_id` = ?, '

@@ -195,7 +195,14 @@ abstract class Daemon {
             concurrentProcessors ++;
             await processor.processMessage(decodedMessage);
           } catch (error, stacktrace) {
-            await errorHandler.handleError(processor.db, serviceId, 'queue.' + processor.queue.className, error, stacktrace);
+            await errorHandler.handleError(
+                processor.db,
+                serviceId,
+                'queue.' + processor.queue.className,
+                error,
+                stacktrace,
+                requestBody: message.payloadAsString
+            );
           }
           concurrentProcessors --;
           await processor.db.query(

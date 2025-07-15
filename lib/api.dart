@@ -461,10 +461,11 @@ abstract class Server {
   Future handleRequest(HttpRequest request) async {
     int? serviceId = null;
     String actionName = 'unknown';
+    HttpAction? action = null;
     try {
       int start = new DateTime.now().millisecondsSinceEpoch;
       serviceId = config.getRequired<int>('service_id');
-      HttpAction? action = routing.getForRequest(request);
+      action = routing.getForRequest(request);
       int queries = 0;
       if (action == null) {
         writeError(request, HttpStatus.notFound, request.uri.toString());
@@ -512,7 +513,7 @@ abstract class Server {
       
     } catch (error, stacktrace) {
       try {
-        await errorHandler.handleError(db, serviceId ?? 0, 'action.' + actionName, error, stacktrace, request: request, requestBody: "TODO");
+        await errorHandler.handleError(db, serviceId ?? 0, 'action.' + actionName, error, stacktrace, request: request, requestBody: action?.rawBody);
         db.disconnect();
       } catch (e) {
         print('CRITICAL! UNHANDLED ERROR');
