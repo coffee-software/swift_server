@@ -16,6 +16,11 @@ class HttpException implements Exception {
   int code;
   String message;
   HttpException(this.code, this.message);
+
+  @override
+  String toString() {
+    return "Exception: $message";
+  }
 }
 
 class HttpUnauthorizedException extends HttpException {
