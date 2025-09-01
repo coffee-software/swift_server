@@ -20,6 +20,7 @@ import 'queue_processor.dart';
 export 'queue_processor.dart';
 
 export 'mailer.dart';
+export 'server.dart';
 
 
 /**
