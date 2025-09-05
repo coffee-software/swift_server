@@ -6,7 +6,7 @@ import 'package:mysql_client/exception.dart';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:mysql_client/mysql_client.dart';
 
-import 'package:swift_server/config.dart';
+import 'config.dart';
 
 @Compose
 abstract class NamedLock {
@@ -31,20 +31,6 @@ abstract class NamedLock {
   Future<void> unlock(String name) async {
     _locks[name]!.closeSync();
     _locks.remove(name);
-  }
-}
-
-class Logger {
-  Db db;
-  Logger(this.db);
-
-  Future<void> log(String type, String message, {String? subtype = null, int? entityId = null}) async {
-    await db.query('INSERT INTO `run_logs` SET `type` = ?, `subtype` = ?, `entity_id` = ?, `message` = ?', [
-      type,
-      subtype,
-      entityId,
-      message
-    ]);
   }
 }
 
@@ -175,6 +161,9 @@ abstract class Db {
 @Compose
 abstract class Net {
 
+  @Inject
+  ServerConfig get serverConfig;
+
   Future<dynamic> _json(String method, String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
     var client = new HttpClient();
     Map<String,String> headers = {
@@ -236,6 +225,14 @@ abstract class Net {
     extraHeaders.forEach((key, value) {
       headers[key] = value;
     });
+    final String? body = params == null ? null : params.map((k,v) => MapEntry(k, Uri.encodeComponent(k) + '=' + Uri.encodeComponent(v))).values.join('&');
+    if (serverConfig.isDebugEnabled) {
+      print("REQUEST: ${method.toUpperCase()} ${Uri.parse(url)}");
+      headers.forEach((key, value) {
+        print(key + ': ' + value);
+      });
+      print(body);
+    }
 
     switch (method) {
       case 'get':
@@ -251,15 +248,21 @@ abstract class Net {
     headers.forEach((key, value) {
       req.headers.add(key, value);
     });
-    if (params != null) {
-      req.writeAll(params.map((k,v) => MapEntry(k, Uri.encodeComponent(k) + '=' + Uri.encodeComponent(v))).values, '&');
+    if (body != null) {
+      req.write(body);
     }
+
     var response = await req.close();
     client.close();
     List<int> bytes = [];
     await for (var data in response) {
       bytes.addAll(data);
     }
+    if (serverConfig.isDebugEnabled) {
+      print('RESPONSE:');
+      print(new String.fromCharCodes(bytes));
+    }
+
     return bytes;
   }
 

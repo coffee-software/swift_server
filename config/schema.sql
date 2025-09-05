@@ -56,7 +56,7 @@ DROP TABLE IF EXISTS `run_logs`;
 CREATE TABLE `run_logs` (
   `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
   `type` varchar(63) NOT NULL,
-  `subtype` varchar(127) DEFAULT NULL, --optional
+  `level` varchar(10) NOT NULL DEFAULT 'info', --info/error
   `entity_id` int(11) DEFAULT NULL, --optional
   `message` text NOT NULL,
   KEY `type` (`type`)

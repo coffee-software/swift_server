@@ -11,14 +11,13 @@ export 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 export 'package:swift_server/config.dart';
 import 'package:path/path.dart' as path;
-import 'package:swift_server/error_handler.dart';
-export 'package:swift_server/error_handler.dart';
 import 'package:swift_server/server.dart';
 
 import 'tools.dart';
 export 'tools.dart';
 export 'mailer.dart';
 export 'cache.dart';
+import 'logger.dart';
 
 const CliArg = true;
 const CliParameter = true;
@@ -29,14 +28,17 @@ const CliParameters = true;
  * Single Command
  */
 @ComposeSubtypes
-abstract class Command {
+abstract class Command implements BackendProcessorInterface {
   @InjectClassName
   String get className;
 
   @Inject
   Cli get cli;
 
-  Logger get logger => new Logger(cli.db);
+  Db get db => cli.db;
+  ServerConfig get serverConfig => cli.config;
+
+  Logger get logger => new Logger(cli.db, 0, cli.config.getRequired<bool>('debug'));
 
   Future run();
 
@@ -195,9 +197,6 @@ abstract class Cli {
 
   @Inject
   SubtypesOf<Command> get availableCommands;
-
-  @Inject
-  ErrorHandler get errorHandler;
 
   String commandToClassCode(String command) {
     var bits = command.split(':');

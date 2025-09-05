@@ -136,7 +136,7 @@ void main() async {
     }));
 
     test('daemon CLI test', overridePrint(() async {
-      await raw_cli.$om.cli.run(['TestCommand', '--config', testConfigPath(), '--testArg', 'TEST_ARG']);
+      await raw_cli.$om.cli.run(['testCommand', '--config', testConfigPath(), '--testArg', 'TEST_ARG']);
       expect(getLogs().indexOf('running test CLI command with arg = TEST_ARG') > -1, true);
     }));
 
@@ -193,7 +193,7 @@ void main() async {
       });
     });
 
-    test('net tools', () async {
+    test('net tools', overridePrint(() async {
       HttpServer server = await HttpServer.bind(
         InternetAddress.anyIPv4,
         18256
@@ -214,5 +214,5 @@ void main() async {
       expect(ret3, [123, 34, 114, 101, 116, 34, 58, 34, 91, 118, 97, 108, 117, 101, 93, 34, 125]);
 
       echo.cancel();
-    });
+    }));
 }

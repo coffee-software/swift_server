@@ -6,11 +6,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
+import 'logger.dart';
+
 import 'http_status_codes.dart';
 import 'package:args/args.dart';
 
-import 'error_handler.dart';
-export 'error_handler.dart';
 import 'stats.dart';
 export 'stats.dart';
 
@@ -30,7 +30,7 @@ const PathArg = true;
  * Single HTTP API Endpoint
  */
 @ComposeSubtypes
-abstract class HttpAction {
+abstract class HttpAction implements BackendProcessorInterface {
 
   @InjectClassName
   String get className;
@@ -43,6 +43,9 @@ abstract class HttpAction {
   @Create
   late Db db;
 
+  Logger get logger => server.logger;
+  ServerConfig get serverConfig => server.config;
+
   String? rawBody;
 
   @Require
@@ -54,7 +57,7 @@ abstract class HttpAction {
   @Compile
   void setPostArgs(Map json);
 
-  Future reportError(error, stackTrace) => server.errorHandler.handleError(db, server.config.getRequired<int>('service_id'), 'action.' + className, error, stackTrace, request: request, requestBody: rawBody);
+  Future reportError(error, stackTrace) => server.logger.handleError('action.' + className, error, stackTrace, request: request, requestBody: rawBody);
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
@@ -392,8 +395,6 @@ abstract class Server {
   ServerConfig get config;
   @Inject
   ServerArgs get args;
-  @Inject
-  ErrorHandler get errorHandler;
 
   int threadId = 1;
 
@@ -456,7 +457,7 @@ abstract class Server {
   @Create
   late Db db;
 
-  Logger get logger => new Logger(db);
+  Logger get logger => new Logger(db, config.getRequired<int>('service_id'), config.getRequired<bool>('debug'));
 
   Future handleRequest(HttpRequest request) async {
     int? serviceId = null;
@@ -490,7 +491,7 @@ abstract class Server {
               trace: stacktrace
           );
           try {
-            await errorHandler.handleError(db, serviceId, 'action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
+            await logger.handleError('action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
             db.disconnect();
           } catch (e) {
             print('CRITICAL! UNHANDLED ERROR');
@@ -513,7 +514,7 @@ abstract class Server {
       
     } catch (error, stacktrace) {
       try {
-        await errorHandler.handleError(db, serviceId ?? 0, 'action.' + actionName, error, stacktrace, request: request, requestBody: action?.rawBody);
+        await logger.handleError('action.' + actionName, error, stacktrace, request: request, requestBody: action?.rawBody);
         db.disconnect();
       } catch (e) {
         print('CRITICAL! UNHANDLED ERROR');

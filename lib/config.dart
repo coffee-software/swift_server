@@ -69,5 +69,9 @@ class ServerConfig {
   T getOptional<T>(String code, T defaultValue) {
     return _get<T>(code, false, defaultValue);
   }
+
+  bool get isDebugEnabled {
+    return getRequired<bool>('debug');
+  }
 }
 

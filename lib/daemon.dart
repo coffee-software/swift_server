@@ -9,8 +9,6 @@ export 'package:swift_composer/swift_composer.dart';
 
 import 'config.dart';
 export 'config.dart';
-import 'error_handler.dart';
-export 'error_handler.dart';
 import 'stats.dart';
 export 'stats.dart';
 import 'tools.dart';
@@ -18,8 +16,11 @@ export 'tools.dart';
 export 'queue.dart';
 import 'queue_processor.dart';
 export 'queue_processor.dart';
+import 'logger.dart';
+export 'logger.dart';
 
 export 'mailer.dart';
+import 'server.dart';
 export 'server.dart';
 
 
@@ -27,7 +28,10 @@ export 'server.dart';
  * Single Cron Job
  */
 @ComposeSubtypes
-abstract class Job {
+abstract class Job implements BackendProcessorInterface {
+
+  @Require
+  late Daemon daemon;
 
   @InjectClassName
   String get className;
@@ -36,8 +40,8 @@ abstract class Job {
 
   @Create
   late Db db;
-
-  Logger get logger => new Logger(db);
+  ServerConfig get serverConfig => daemon.config;
+  Logger get logger => new Logger(db, 0, false);
 
   Future run();
 
@@ -91,11 +95,8 @@ abstract class Daemon {
   @Inject
   ServerConfig get config;
 
-  @Inject
-  ErrorHandler get errorHandler;
-
   @SubtypeFactory
-  Job createJob(String className);
+  Job createJob(String className, Daemon daemon);
 
   @Inject
   SubtypesOf<Job> get allJobs;
@@ -107,14 +108,14 @@ abstract class Daemon {
   SubtypesOf<QueueProcessor> get allQueueProcessors;
 
   Future runJob(String key) async {
-    var job = createJob(key);
+    var job = createJob(key, this);
     int serviceId = config.getRequired<int>('service_id');
     job.stats = new Stats(config, serviceId, 'job', job.className);
     int start = new DateTime.now().millisecondsSinceEpoch;
     try {
       await job.run();
     } catch (error, stacktrace) {
-      await errorHandler.handleError(job.db, serviceId, 'job.' + key, error, stacktrace);
+      await job.logger.handleError('job.' + key, error, stacktrace);
     }
     await job.db.query(
         'INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()',
@@ -139,7 +140,7 @@ abstract class Daemon {
             [serviceId, key]);
       }
       //TODO @Interval annotation
-      if ((lastStarts[key] == null) || (now.difference(lastStarts[key]!).inMinutes >= createJob(key).minuteInterval)) {
+      if ((lastStarts[key] == null) || (now.difference(lastStarts[key]!).inMinutes >= createJob(key, this).minuteInterval)) {
         lastStarts[key] = now;
         await runJob(key);
       }
@@ -196,9 +197,7 @@ abstract class Daemon {
             concurrentProcessors ++;
             await processor.processMessage(decodedMessage);
           } catch (error, stacktrace) {
-            await errorHandler.handleError(
-                processor.db,
-                serviceId,
+            await processor.logger.handleError(
                 'queue.' + processor.queue.className,
                 error,
                 stacktrace,
