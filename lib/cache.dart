@@ -13,19 +13,19 @@ abstract class RedisCache {
   ServerConfig get config;
 
   RedisConnection? connection;
-  Command? command;
+  Future<Command>? command;
   String? _prefix;
   String get prefix => _prefix ?? (_prefix = config.getOptional<String>('redis.prefix', ''));
 
   Future<Command> getClient() async {
     if (connection == null) {
       connection = RedisConnection();
-      command = await connection!.connect(
+      command = connection!.connect(
         config.getRequired<String>('redis.host'),
         config.getRequired<int>('redis.port'),
       );
     }
-    return command!;
+    return await command!;
   }
 
   Future<void> disconnect() async {
