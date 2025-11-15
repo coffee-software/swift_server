@@ -16,7 +16,7 @@ abstract class TestJob extends Job {
   @Inject
   TestQueue2 get testQueue2;
 
-  int minuteInterval = 1;
+  int get minuteInterval => 1;
 
   Future run() async {
     print('running test job');

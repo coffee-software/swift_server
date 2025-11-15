@@ -45,13 +45,13 @@ abstract class Job implements BackendProcessorInterface {
 
   Future run();
 
-  int minuteInterval = 5;
+  int get minuteInterval => 5;
 
 }
 
 abstract class Ticker extends Job {
 
-  int minuteInterval = 1;
+  int get minuteInterval => 1;
 
   Future run() async {
     //this job does nothing. it is used to check if daemon is running properly
