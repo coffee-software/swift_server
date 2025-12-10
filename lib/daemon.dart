@@ -129,10 +129,11 @@ abstract class Daemon {
     job.stats?.saveStats(job.db.counter, timeMs);
   }
 
+  Map<String, DateTime?> lastStarts = {};
+
   Future step() async {
     int serviceId = config.getRequired<int>('service_id');
     DateTime now = DateTime.now();
-    Map<String, DateTime?> lastStarts = {};
     for (var key in allJobs.allClassNames) {
       if (!lastStarts.containsKey(key)) {
         lastStarts[key] = await db.fetchOne<DateTime>(
@@ -168,8 +169,6 @@ abstract class Daemon {
     }
   }
 
-  int concurrentProcessors = 0;
-
   Future processQueuesIsolate() async {
     print("preparing queues(${allQueueProcessors.allClassNames.length}).");
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(
@@ -178,6 +177,8 @@ abstract class Daemon {
     );
     amqpClient = new amqp.Client(settings: settings);
     amqp.Channel channel = await amqpClient!.channel();
+    //TODO: configurable concurrent processors
+    channel = await channel.qos(0, 6);
     int serviceId = config.getRequired<int>('service_id');
     amqpConsumers = [];
     for (var processorName in allQueueProcessors.allClassNames) {
@@ -191,10 +192,6 @@ abstract class Daemon {
           processor.stats = new Stats(config, serviceId, 'queue', processor.className);
           try {
             var decodedMessage = json.decode(message.payloadAsString);
-            while (concurrentProcessors > 10) {
-              await Future.delayed(Duration(seconds: 1));
-            }
-            concurrentProcessors ++;
             await processor.processMessage(decodedMessage);
           } catch (error, stacktrace) {
             await processor.logger.handleError(
@@ -204,7 +201,6 @@ abstract class Daemon {
                 requestBody: message.payloadAsString
             );
           }
-          concurrentProcessors --;
           await processor.db.query(
               'INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()',
               [
