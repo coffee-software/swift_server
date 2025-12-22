@@ -86,7 +86,7 @@ abstract class Db {
     counter++;
     List<T> ret = [];
     for (var row in (await _prepareAndExecute(sql, values)).rows) {
-      ret.add(row.typedColAt<T>(0)!);
+      ret.add(row.typedColAt<T>(0) as T);
     }
     return ret;
   }
@@ -252,11 +252,6 @@ abstract class Net {
     }
 
     return bytes;
-  }
-
-  @deprecated
-  Future<List<int>> get(String url, {Map<String, String> extraHeaders = const {}}) async {
-    return await getRaw(url, extraHeaders: extraHeaders);
   }
 
   Future<List<int>> getRaw(String url, {Map<String, String> extraHeaders = const {}}) async {

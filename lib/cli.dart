@@ -14,8 +14,11 @@ export 'tools.dart';
 export 'mailer.dart';
 export 'cache.dart';
 
+// ignore: constant_identifier_names
 const CliArg = true;
+// ignore: constant_identifier_names
 const CliParameter = true;
+// ignore: constant_identifier_names
 const CliParameters = true;
 
 /// Single Command
@@ -122,35 +125,35 @@ abstract class Command implements BackendProcessorInterface {
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
-  // ignore: unused_element
+  // ignore: unused_element, non_constant_identifier_names
   void _configureCliArgsStringRequired(ArgParser parser, String name, String field, {String HelpText_value = ''}) {
     parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: true);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
-  // ignore: unused_element
+  // ignore: unused_element, non_constant_identifier_names
   void _configureCliArgsStringOptional(ArgParser parser, String name, String? field, {String HelpText_value = ''}) {
     parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: false);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
-  // ignore: unused_element
+  // ignore: unused_element, non_constant_identifier_names
   void _configureCliArgsIntRequired(ArgParser parser, String name, int field, {String HelpText_value = ''}) {
     parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: true);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
-  // ignore: unused_element
+  // ignore: unused_element, non_constant_identifier_names
   void _configureCliArgsIntOptional(ArgParser parser, String name, int? field, {String HelpText_value = ''}) {
     parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: false);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
-  // ignore: unused_element
+  // ignore: unused_element, non_constant_identifier_names
   void _configureCliArgsBool(ArgParser parser, String name, bool field, {String HelpText_value = ''}) {
     parser.addFlag(name, help: HelpText_value);
   }

@@ -23,7 +23,7 @@ var _log = [];
 void Function() overridePrint(void Function() testFn) => () {
   _log = [];
   var spec = ZoneSpecification(
-    print: (_, __, ___, String msg) {
+    print: (_, _, _, String msg) {
       _log.add(msg);
     },
   );
@@ -191,11 +191,11 @@ void main() async {
   );
 
   test('named locks', () async {
-    [1, 2, 3].forEach((element) async {
+    for (var _ in [1, 2, 3]) {
       await raw_server.$om.namedLock.lock('test');
       await Future.delayed(const Duration(milliseconds: 100));
       await raw_server.$om.namedLock.unlock('test');
-    });
+    }
   });
 
   test(

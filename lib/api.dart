@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-
 import 'http_status_codes.dart';
 import 'package:args/args.dart';
 
@@ -59,7 +58,8 @@ abstract class HttpAction implements BackendProcessorInterface {
   @Compile
   void setPostArgs(Map json);
 
-  Future reportError(dynamic error, StackTrace stackTrace) => server.logger.handleError('action.$className', error, stackTrace, request: request, requestBody: rawBody);
+  Future reportError(dynamic error, StackTrace stackTrace) =>
+      server.logger.handleError('action.$className', error, stackTrace, request: request, requestBody: rawBody);
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
@@ -421,7 +421,9 @@ abstract class Server {
     try {
       request.response.statusCode = code;
       request.response.headers.contentType = ContentType.json;
-    } catch (e) {}
+    } catch (e) {
+      //ignore headers already sent issue
+    }
     var json = {'error': "$code ${httpStatusMessage[code]!}", 'message': message};
     if (config.getRequired<bool>('debug') && trace != null) {
       json['trace'] = trace.toString();
