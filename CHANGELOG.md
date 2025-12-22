@@ -1,3 +1,10 @@
+# 0.4.0
+
+* update sdk and library dependencies
+* change mysql_client dependency to mysql_client_plus
+* apply dart analyzer and format fixes
+* remove deprecated net.get
+
 # 0.3.0
 
 * use mysql_client as db client
