@@ -4,12 +4,11 @@ import 'raw_lib.dart';
 
 part 'raw_daemon.c.dart';
 
-void main (List<String> arguments) async {
+void main(List<String> arguments) async {
   await $om.daemon.run(arguments);
 }
 
 abstract class TestJob extends Job {
-
   @Inject
   TestQueue1 get testQueue1;
 
@@ -25,14 +24,12 @@ abstract class TestJob extends Job {
 }
 
 abstract class TestQueue1Processor extends QueueProcessor<TestQueue1, int> {
-
   Future processMessage(dynamic message) async {
     print('queue 1 message: ' + message.toString());
   }
 }
 
 abstract class TestQueue2Processor extends QueueProcessor<TestQueue2, String> {
-
   Future processMessage(dynamic message) async {
     if (message == 'exception') {
       throw new Exception('test exception');

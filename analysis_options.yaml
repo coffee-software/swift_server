@@ -3,5 +3,4 @@ formatter:
 include: package:lints/recommended.yaml
 analyzer:
   exclude:
-    - example/**
-    - test/**
+    - example/*.c.dart
