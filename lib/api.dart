@@ -21,8 +21,11 @@ export 'mailer.dart';
 
 export 'queue.dart';
 
+// ignore: constant_identifier_names
 const PostArg = true;
+// ignore: constant_identifier_names
 const GetArg = true;
+// ignore: constant_identifier_names
 const PathArg = true;
 
 /// Single HTTP API Endpoint
@@ -56,7 +59,7 @@ abstract class HttpAction implements BackendProcessorInterface {
   @Compile
   void setPostArgs(Map json);
 
-  Future reportError(error, stackTrace) => server.logger.handleError('action.$className', error, stackTrace, request: request, requestBody: rawBody);
+  Future reportError(dynamic error, StackTrace stackTrace) => server.logger.handleError('action.$className', error, stackTrace, request: request, requestBody: rawBody);
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
