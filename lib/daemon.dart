@@ -41,7 +41,7 @@ abstract class Job implements BackendProcessorInterface {
   @Create
   late Db db;
   ServerConfig get serverConfig => daemon.config;
-  Logger get logger => new Logger(db, 0, false);
+  Logger get logger => new Logger(db, serverConfig.getRequired<int>('service_id'), serverConfig.getRequired<bool>('debug'));
 
   Future run();
 
