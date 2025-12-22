@@ -1,3 +1,6 @@
+formatter:
+  page_width: 160
+include: package:lints/recommended.yaml
 analyzer:
   exclude:
     - example/**
