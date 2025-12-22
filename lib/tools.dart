@@ -4,8 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:mysql_client_plus/exception.dart';
 import 'package:swift_composer/swift_composer.dart';
-import 'package:mysql_client_plus/mysql_client.dart';
-
+import 'package:mysql_client_plus/mysql_client_plus.dart';
 import 'config.dart';
 
 @Compose

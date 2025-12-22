@@ -1,4 +1,4 @@
-library swift_composer.test;
+library;
 
 import 'dart:async';
 
@@ -11,7 +11,7 @@ import 'package:swift_server/testsuite.dart';
 import 'package:path/path.dart' as path;
 
 String testConfigPath() {
-  return path.dirname(Platform.script.toFilePath()) + '/config.yaml';
+  return '${path.dirname(Platform.script.toFilePath())}/config.yaml';
 }
 
 Future loadConfig() async {
@@ -20,9 +20,9 @@ Future loadConfig() async {
 }
 
 var _log = [];
-void Function() overridePrint(void testFn()) => () {
+void Function() overridePrint(void Function() testFn) => () {
   _log = [];
-  var spec = new ZoneSpecification(
+  var spec = ZoneSpecification(
     print: (_, __, ___, String msg) {
       _log.add(msg);
     },
@@ -71,7 +71,7 @@ void main() async {
 
   test('database time settings', () async {
     DateTime dbTime = (await raw_daemon.$om.daemon.db.fetchOne<DateTime>('SELECT NOW()'))!;
-    DateTime systemTime = new DateTime.now();
+    DateTime systemTime = DateTime.now();
     expect(dbTime.difference(systemTime).inSeconds, 0);
     await raw_daemon.$om.daemon.db.disconnect();
   });
@@ -109,8 +109,8 @@ void main() async {
 
       var row = await raw_daemon.$om.daemon.db.fetchRow('SELECT * FROM run_jobs WHERE app_id = ? AND job = ?', [serviceId, 'Ticker']);
       DateTime daemonLastRun = row!['last_run'];
-      expect(new DateTime.now().difference(daemonLastRun).inSeconds < 65, true);
-      expect(getLogs().indexOf('running test job') > -1, true);
+      expect(DateTime.now().difference(daemonLastRun).inSeconds < 65, true);
+      expect(getLogs().contains('running test job'), true);
       await raw_daemon.$om.daemon.db.disconnect();
     }),
   );
@@ -126,9 +126,9 @@ void main() async {
       await Future.delayed(Duration(milliseconds: 500));
       var row = await raw_daemon.$om.daemon.db.fetchRow('SELECT * FROM run_queues WHERE app_id = ? AND queue = ?', [serviceId, 'TestQueue1']);
       DateTime lastProcess = row!['last_process'];
-      expect(new DateTime.now().difference(lastProcess).inSeconds < 5, true);
-      expect(getLogs().indexOf('queue 1 message: 456') > -1, true);
-      expect(getLogs().indexOf('queue 2 message: TEST1') > -1, true);
+      expect(DateTime.now().difference(lastProcess).inSeconds < 5, true);
+      expect(getLogs().contains('queue 1 message: 456'), true);
+      expect(getLogs().contains('queue 2 message: TEST1'), true);
       await raw_daemon.$om.daemon.finishQueuesIsolate();
       await raw_daemon.$om.daemon.db.disconnect();
     }),
@@ -138,7 +138,7 @@ void main() async {
     'daemon CLI test',
     overridePrint(() async {
       await raw_cli.$om.cli.run(['testCommand', '--config', testConfigPath(), '--testArg', 'TEST_ARG']);
-      expect(getLogs().indexOf('running test CLI command with arg = TEST_ARG') > -1, true);
+      expect(getLogs().contains('running test CLI command with arg = TEST_ARG'), true);
     }),
   );
 
@@ -158,7 +158,7 @@ void main() async {
       var response = await getServerResponse(raw_server.$om.server, MockRequest.get('/robots.txt'));
       expect(response.statusCode, 200);
       expect(response.headers.contentType, ContentType.text);
-      expect(response.toString().length > 0, true);
+      expect(response.toString().isNotEmpty, true);
     }),
   );
 
@@ -186,7 +186,7 @@ void main() async {
       expect(count, 1);
       await raw_daemon.$om.daemon.finishQueuesIsolate();
       await raw_daemon.$om.daemon.db.disconnect();
-      expect(getLogs().indexOf('###############         Unhandled Error         ###############') > -1, true);
+      expect(getLogs().contains('###############         Unhandled Error         ###############'), true);
     }),
   );
 
@@ -204,7 +204,7 @@ void main() async {
       HttpServer server = await HttpServer.bind(InternetAddress.anyIPv4, 18256);
       StreamSubscription echo = server.listen((request) {
         request.response.statusCode = HttpStatus.ok;
-        request.response.write('{\"ret\":\"${request.headers['headerX']}\"}');
+        request.response.write('{"ret":"${request.headers['headerX']}"}');
         request.response.close();
       });
 

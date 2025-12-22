@@ -7,6 +7,7 @@ void main(List<String> arguments) async {
 }
 
 abstract class TestAction extends JsonAction {
+  @override
   Future run() async {
     return {'response': 'test', 'float': 1.5};
   }

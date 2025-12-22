@@ -12,10 +12,21 @@ Future<MockResponse> getServerResponse(Server server, MockRequest request) async
   return request.response;
 }
 
-class MockHeaders extends HttpHeaders {
+
+class MockHeaders implements HttpHeaders {
   Map<String, String> data;
 
   MockHeaders(this.data);
+
+  bool chunkedTransferEncoding = false;
+  int contentLength = 0;
+  ContentType? contentType = null;
+  DateTime? date = null;
+  DateTime? expires = null;
+  String? host = null;
+  DateTime? ifModifiedSince = null;
+  bool persistentConnection = false;
+  int? port = null;
 
   @override
   List<String>? operator [](String name) {

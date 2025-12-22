@@ -56,8 +56,8 @@ DROP TABLE IF EXISTS `run_logs`;
 CREATE TABLE `run_logs` (
   `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
   `type` varchar(63) NOT NULL,
-  `level` varchar(10) NOT NULL DEFAULT 'info', --info/error
-  `entity_id` int(11) DEFAULT NULL, --optional
+  `level` varchar(10) NOT NULL DEFAULT 'info',
+  `entity_id` int(11) DEFAULT NULL,
   `message` text NOT NULL,
   KEY `type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

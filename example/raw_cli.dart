@@ -10,7 +10,8 @@ abstract class TestCommand extends Command {
   @CliArg
   late String testArg;
 
+  @override
   Future run() async {
-    print('running test CLI command with arg = ' + testArg);
+    print('running test CLI command with arg = $testArg');
   }
 }

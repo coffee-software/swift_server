@@ -94,20 +94,24 @@ abstract class Command implements BackendProcessorInterface {
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
   void _setCliArgsParameterString(ArgResults args, String name, String field) {
-    if (args.rest.length <= paramI) {
+    // ignore: unnecessary_this
+    if (args.rest.length <= this.paramI) {
       throw Exception("Missing CLI ARG $name");
     }
-    field = args.rest[paramI++];
+    // ignore: unnecessary_this
+    field = args.rest[this.paramI++];
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
   void _setCliArgsParameterInt(ArgResults args, String name, int field) {
-    if (args.rest.length <= paramI) {
+    // ignore: unnecessary_this
+    if (args.rest.length <= this.paramI) {
       throw Exception("Missing CLI ARG $name");
     }
-    field = int.parse(args.rest[paramI++]);
+    // ignore: unnecessary_this
+    field = int.parse(args.rest[this.paramI++]);
   }
 
   @Compile
