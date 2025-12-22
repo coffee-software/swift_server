@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
 
 export 'cache.dart';

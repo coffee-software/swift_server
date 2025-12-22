@@ -1,12 +1,10 @@
-library swift_server;
+library;
 
 import 'dart:io';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:yaml/yaml.dart';
 
-/**
- * Server Configuration Reader
- */
+/// Server Configuration Reader
 @Compose
 class ServerConfig {
   @Create
@@ -24,9 +22,9 @@ class ServerConfig {
     return ret;
   }
 
-  load(String path) async {
-    var configFile = new File(path);
-    var overrideFile = new File(path.replaceFirst('.yaml', '.override.yaml'));
+  Future<void> load(String path) async {
+    var configFile = File(path);
+    var overrideFile = File(path.replaceFirst('.yaml', '.override.yaml'));
     data = loadYaml(await configFile.readAsString());
     if (overrideFile.existsSync()) {
       var overrideData = loadYaml(await overrideFile.readAsString());
@@ -40,7 +38,7 @@ class ServerConfig {
     for (int i = 0; i < path.length - 1; i++) {
       if (!ret.containsKey(path[i])) {
         if (required) {
-          throw new Exception('missing required config value: ${path[i]}');
+          throw Exception('missing required config value: ${path[i]}');
         } else {
           return defaultValue!;
         }
@@ -49,7 +47,7 @@ class ServerConfig {
     }
     if (!ret.containsKey(path.last)) {
       if (required) {
-        throw new Exception('missing required config value: ${path.last}');
+        throw Exception('missing required config value: ${path.last}');
       } else {
         return defaultValue as T;
       }

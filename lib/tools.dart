@@ -1,16 +1,16 @@
-library swift_server;
+library;
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:mysql_client/exception.dart';
+import 'package:mysql_client_plus/exception.dart';
 import 'package:swift_composer/swift_composer.dart';
-import 'package:mysql_client/mysql_client.dart';
+import 'package:mysql_client_plus/mysql_client.dart';
 
 import 'config.dart';
 
 @Compose
 abstract class NamedLock {
-  Map<String, RandomAccessFile?> _locks = {};
+  final Map<String, RandomAccessFile?> _locks = {};
 
   Future<void> lock(String name) async {
     await Future.doWhile(() async {
@@ -18,7 +18,7 @@ abstract class NamedLock {
         await Future.delayed(const Duration(milliseconds: 10));
         return true;
       }
-      String path = '/var/lock/swift_' + name;
+      String path = '/var/lock/swift_$name';
       final file = File(path);
       var raf = file.openSync(mode: FileMode.write);
       _locks[name] = raf;
@@ -94,7 +94,7 @@ abstract class Db {
 
   Future<Map?> fetchRow(String sql, [List<Object?>? values]) async {
     counter++;
-    Map? ret = null;
+    Map? ret;
     for (var row in (await _prepareAndExecute(sql, values)).rows) {
       ret = row.typedAssoc();
     }
@@ -106,16 +106,13 @@ abstract class Db {
    */
   Future<int> getIdOrInsert(String tableName, String where, List<Object?> whereArgs, String set, List<Object?> setArgs) async {
     var id = await fetchOne<int>('SELECT `id` FROM $tableName WHERE $where', whereArgs);
-    if (id == null) {
-      //this ON DUPLICATE KEY is here so this wont have to run in transaction
-      id = (await query('INSERT INTO $tableName SET $set ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(`id`);', setArgs)).lastInsertID.toInt();
-    }
+    id ??= (await query('INSERT INTO $tableName SET $set ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(`id`);', setArgs)).lastInsertID.toInt();
     return id;
   }
 
   Future<T?> fetchOne<T>(String sql, [List<Object?>? values]) async {
     counter++;
-    dynamic ret = null;
+    dynamic ret;
     for (var row in (await _prepareAndExecute(sql, values)).rows) {
       ret = row.typedColAt<T>(0);
     }
@@ -128,7 +125,7 @@ abstract class Db {
   }
 
   Future<IResultSet> _prepareAndExecute(String sql, [List<dynamic>? values]) async {
-    var connection = await this.getConnection();
+    var connection = await getConnection();
     int retried = 0;
     while (retried <= 1) {
       try {
@@ -144,13 +141,13 @@ abstract class Db {
         if (!connection.connected) {
           _connection = null;
           retried++;
-          connection = await this.getConnection();
+          connection = await getConnection();
         } else {
           rethrow;
         }
       }
     }
-    throw new MySQLClientException('can not retry');
+    throw MySQLClientException('can not retry');
   }
 }
 
@@ -160,7 +157,7 @@ abstract class Net {
   ServerConfig get serverConfig;
 
   Future<dynamic> _json(String method, String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
-    var client = new HttpClient();
+    var client = HttpClient();
     Map<String, String> headers = {'Content-type': 'application/json', 'Accept': 'application/json'};
     extraHeaders.forEach((key, value) {
       headers[key] = value;
@@ -208,7 +205,7 @@ abstract class Net {
   }
 
   Future<List<int>> _raw(String method, String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
-    var client = new HttpClient();
+    var client = HttpClient();
     HttpClientRequest req;
     Map<String, String> headers = {};
     if (params != null) {
@@ -217,11 +214,11 @@ abstract class Net {
     extraHeaders.forEach((key, value) {
       headers[key] = value;
     });
-    final String? body = params == null ? null : params.map((k, v) => MapEntry(k, Uri.encodeComponent(k) + '=' + Uri.encodeComponent(v))).values.join('&');
+    final String? body = params?.map((k, v) => MapEntry(k, '${Uri.encodeComponent(k)}=${Uri.encodeComponent(v)}')).values.join('&');
     if (serverConfig.isDebugEnabled) {
       print("REQUEST: ${method.toUpperCase()} ${Uri.parse(url)}");
       headers.forEach((key, value) {
-        print(key + ': ' + value);
+        print('$key: $value');
       });
       print(body);
     }
@@ -252,7 +249,7 @@ abstract class Net {
     }
     if (serverConfig.isDebugEnabled) {
       print('RESPONSE:');
-      print(new String.fromCharCodes(bytes));
+      print(String.fromCharCodes(bytes));
     }
 
     return bytes;
@@ -272,10 +269,10 @@ abstract class Net {
   }
 
   Future<String> getHtml(String url, {Map<String, String> extraHeaders = const {}}) async {
-    return new String.fromCharCodes(await _raw('get', url, null, extraHeaders: extraHeaders));
+    return String.fromCharCodes(await _raw('get', url, null, extraHeaders: extraHeaders));
   }
 
   Future<String> postHtml(String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
-    return new String.fromCharCodes(await _raw('post', url, params, extraHeaders: extraHeaders));
+    return String.fromCharCodes(await _raw('post', url, params, extraHeaders: extraHeaders));
   }
 }

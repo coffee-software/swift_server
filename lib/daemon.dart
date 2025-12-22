@@ -1,31 +1,25 @@
-library swift_server;
+library;
 
 import 'dart:convert';
 
 import 'package:args/args.dart';
 import 'package:dart_amqp/dart_amqp.dart' as amqp;
-import 'package:swift_composer/swift_composer.dart';
 export 'package:swift_composer/swift_composer.dart';
 
-import 'config.dart';
 export 'config.dart';
 import 'stats.dart';
 export 'stats.dart';
-import 'tools.dart';
 export 'tools.dart';
 export 'queue.dart';
 import 'queue_processor.dart';
 export 'queue_processor.dart';
-import 'logger.dart';
 export 'logger.dart';
 
 export 'mailer.dart';
 import 'server.dart';
 export 'server.dart';
 
-/**
- * Single Cron Job
- */
+/// Single Cron Job
 @ComposeSubtypes
 abstract class Job implements BackendProcessorInterface {
   @Require
@@ -36,10 +30,13 @@ abstract class Job implements BackendProcessorInterface {
 
   Stats? stats;
 
+  @override
   @Create
   late Db db;
+  @override
   ServerConfig get serverConfig => daemon.config;
-  Logger get logger => new Logger(db, serverConfig.getRequired<int>('service_id'), serverConfig.getRequired<bool>('debug'));
+  @override
+  Logger get logger => Logger(db, serverConfig.getRequired<int>('service_id'), serverConfig.getRequired<bool>('debug'));
 
   Future run();
 
@@ -47,8 +44,10 @@ abstract class Job implements BackendProcessorInterface {
 }
 
 abstract class Ticker extends Job {
+  @override
   int get minuteInterval => 1;
 
+  @override
   Future run() async {
     //this job does nothing. it is used to check if daemon is running properly
   }
@@ -58,25 +57,23 @@ abstract class Ticker extends Job {
 abstract class DaemonArgs {
   ArgResults? args;
 
-  parse(List<String> arguments) {
+  void parse(List<String> arguments) {
     var parser = ArgParser();
     parser.addOption('config');
     parser.addOption('run');
-    this.args = parser.parse(arguments);
+    args = parser.parse(arguments);
   }
 
   String? get runSingleJob {
-    return this.args?['run'];
+    return args?['run'];
   }
 
   String get configPath {
-    return this.args!['config'];
+    return args!['config'];
   }
 }
 
-/**
- * Daemon process handler
- */
+/// Daemon process handler
 @Compose
 abstract class Daemon {
   @Create
@@ -103,15 +100,15 @@ abstract class Daemon {
   Future runJob(String key) async {
     var job = createJob(key, this);
     int serviceId = config.getRequired<int>('service_id');
-    job.stats = new Stats(config, serviceId, 'job', job.className);
-    int start = new DateTime.now().millisecondsSinceEpoch;
+    job.stats = Stats(config, serviceId, 'job', job.className);
+    int start = DateTime.now().millisecondsSinceEpoch;
     try {
       await job.run();
     } catch (error, stacktrace) {
-      await job.logger.handleError('job.' + key, error, stacktrace);
+      await job.logger.handleError('job.$key', error, stacktrace);
     }
     await job.db.query('INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()', [serviceId, key]);
-    int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+    int timeMs = DateTime.now().millisecondsSinceEpoch - start;
     await job.db.disconnect();
     job.stats?.saveStats(job.db.counter, timeMs);
   }
@@ -142,7 +139,7 @@ abstract class Daemon {
     }
   }
 
-  amqp.Client? amqpClient = null;
+  amqp.Client? amqpClient;
   List<amqp.Consumer> amqpConsumers = [];
 
   Future finishQueuesIsolate() async {
@@ -150,7 +147,6 @@ abstract class Daemon {
       for (var consumer in amqpConsumers) {
         await consumer.cancel();
       }
-      ;
       await amqpClient!.close();
     }
   }
@@ -158,7 +154,7 @@ abstract class Daemon {
   Future processQueuesIsolate() async {
     print("preparing queues(${allQueueProcessors.allClassNames.length}).");
     amqp.ConnectionSettings settings = amqp.ConnectionSettings(host: config.getRequired<String>('amqp.host'), port: config.getRequired<int>('amqp.port'));
-    amqpClient = new amqp.Client(settings: settings);
+    amqpClient = amqp.Client(settings: settings);
     amqp.Channel channel = await amqpClient!.channel();
     //TODO: configurable concurrent processors
     channel = await channel.qos(0, 6);
@@ -169,21 +165,21 @@ abstract class Daemon {
       amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
       amqp.Consumer consumer = await amqpQueue.consume(noAck: false);
       amqpConsumers.add(consumer);
-      await consumer.listen((amqp.AmqpMessage message) async {
+      consumer.listen((amqp.AmqpMessage message) async {
         var processor = createQueueProcessor(processorName);
-        int start = new DateTime.now().millisecondsSinceEpoch;
-        processor.stats = new Stats(config, serviceId, 'queue', processor.className);
+        int start = DateTime.now().millisecondsSinceEpoch;
+        processor.stats = Stats(config, serviceId, 'queue', processor.className);
         try {
           var decodedMessage = json.decode(message.payloadAsString);
           await processor.processMessage(decodedMessage);
         } catch (error, stacktrace) {
-          await processor.logger.handleError('queue.' + processor.queue.className, error, stacktrace, requestBody: message.payloadAsString);
+          await processor.logger.handleError('queue.${processor.queue.className}', error, stacktrace, requestBody: message.payloadAsString);
         }
         await processor.db.query('INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()', [
           serviceId,
           processor.queue.className,
         ]);
-        int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+        int timeMs = DateTime.now().millisecondsSinceEpoch - start;
         await processor.db.disconnect();
         processor.stats?.saveStats(processor.db.counter, timeMs);
         message.ack();

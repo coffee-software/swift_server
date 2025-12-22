@@ -1,4 +1,4 @@
-library swift_server;
+library;
 
 import 'dart:convert';
 import 'dart:io';
@@ -34,6 +34,7 @@ class MailerFileAttachment extends MailerAttachment {
   File file;
   MailerFileAttachment(this.file, this.name, this.mime);
 
+  @override
   Attachment _getAttachment() {
     return FileAttachment(file, fileName: name, contentType: '$mime; name="$name"');
   }
@@ -45,6 +46,7 @@ class MailerBase64Attachment extends MailerAttachment {
   String contents;
   MailerBase64Attachment(this.contents, this.name, this.mime);
 
+  @override
   Attachment _getAttachment() {
     return StreamAttachment(Stream.value(List<int>.from(base64Decode(contents))), '$mime; name="$name"', fileName: name);
   }
@@ -80,7 +82,7 @@ abstract class Mailer {
       var ret = await _sendSmtpEmail(subject, bodyHtml, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
       if (sendFyiTo.isNotEmpty) {
         for (var fyiRecipient in sendFyiTo) {
-          String fyiSubject = 'FYI: ' + recipients.join(',') + ' ' + subject;
+          String fyiSubject = 'FYI: ${recipients.join(',')} $subject';
           await _sendSmtpEmail(fyiSubject, bodyHtml, bodyText, [fyiRecipient], replyTo: replyTo, images: images, attachments: attachments);
         }
       }
@@ -101,14 +103,14 @@ abstract class Mailer {
     Iterable<MailAddress> replyTo = const [],
   }) async {
     print('################## SENDING EMAIL ##################');
-    print('# subject: ' + subject);
-    print('# recipients: ' + recipients.join(','));
-    print('# replyTo: ' + replyTo.join(','));
+    print('# subject: $subject');
+    print('# recipients: ${recipients.join(',')}');
+    print('# replyTo: ${replyTo.join(',')}');
     print('##################   TEXT BODY   ##################');
     print(bodyText);
     print('###################################################');
-    print('images: ' + images.keys.join(', '));
-    print('attachments: ' + attachments.keys.join(', '));
+    print('images: ${images.keys.join(', ')}');
+    print('attachments: ${attachments.keys.join(', ')}');
     print('###################################################');
     return true;
   }
@@ -122,7 +124,7 @@ abstract class Mailer {
     Map<String, MailerAttachment> attachments = const {},
     Iterable<MailAddress> replyTo = const [],
   }) async {
-    var smtpServer = new SmtpServer(
+    var smtpServer = SmtpServer(
       config.getRequired<String>('mailer.hostName'),
       name: config.getRequired<String>('mailer.sender.email'),
       username: config.getRequired<String?>('mailer.username'),
@@ -135,13 +137,11 @@ abstract class Mailer {
     for (var i in images.keys) {
       mailAttachments.add(images[i]!.getAsInline(i));
     }
-    ;
     for (var a in attachments.keys) {
       mailAttachments.add(attachments[a]!.getAsAttachment(a));
     }
-    ;
 
-    int randomIdPart = new Random().nextInt((1 << 32) - 1);
+    int randomIdPart = Random().nextInt((1 << 32) - 1);
 
     final emailMessage = Message()
       ..from = Address(config.getRequired<String>('mailer.sender.email'), config.getRequired<String>('mailer.sender.name'))
@@ -151,7 +151,7 @@ abstract class Mailer {
       ..html = bodyHtml
       ..attachments = mailAttachments;
 
-    Map<String, dynamic> headers = {'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-${randomIdPart}@${Platform.localHostname}>'};
+    Map<String, dynamic> headers = {'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-$randomIdPart@${Platform.localHostname}>'};
 
     if (replyTo.isNotEmpty) {
       headers['Reply-To'] = replyTo.map((e) => Address(e.email, e.name));

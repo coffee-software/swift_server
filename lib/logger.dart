@@ -10,12 +10,12 @@ class Logger {
 
   Logger(this.db, this.serviceId, this.debug);
 
-  Future<void> error(String type, String message, {int? entityId = null, exception = null, StackTrace? stackTrace = null, Map? debugData = null}) async {
+  Future<void> error(String type, String message, {int? entityId, exception, StackTrace? stackTrace, Map? debugData}) async {
     await _logError(message, exception: exception, stackTrace: stackTrace, debug: debugData);
     await _addLogRow(type, 'error', message, entityId);
   }
 
-  Future<void> log(String type, String message, {int? entityId = null}) async {
+  Future<void> log(String type, String message, {int? entityId}) async {
     await _addLogRow(type, 'info', message, entityId);
   }
 
@@ -47,7 +47,7 @@ class Logger {
       print(stacktrace.toString());
       print('###############           Catch Trace           ###############');
       try {
-        throw new Exception("handle trace");
+        throw Exception("handle trace");
       } catch (e, stack2) {
         print(stack2.toString());
       }

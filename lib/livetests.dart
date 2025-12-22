@@ -1,4 +1,4 @@
-library swift_server.test;
+library;
 
 import 'dart:io';
 import 'dart:convert';
@@ -8,7 +8,7 @@ Future<HttpClientResponse> getResponseFromApi(String domain, String path, {Map? 
   var domainSuffix = env['SWIFT_SUFFIX'] ?? '';
   var proto = domainSuffix.isEmpty ? 'https' : 'http';
   String url = '$proto://$domain$domainSuffix';
-  var client = new HttpClient();
+  var client = HttpClient();
 
   var request = await client.getUrl(Uri.parse('$url$path'));
   if (headers != null) {

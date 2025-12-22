@@ -13,11 +13,11 @@ class Stats {
 
   var points = List<Point>.empty(growable: true);
 
-  addTag(String tagName, String value) async {
+  Future<void> addTag(String tagName, String value) async {
     tags[tagName] = value;
   }
 
-  String get pointPrefix => config.getOptional<String>('influx.pointPrefix', '') + '_';
+  String get pointPrefix => '${config.getOptional<String>('influx.pointPrefix', '')}_';
 
   Future addPoint(String key, int value) async {
     points.add(Point(pointPrefix + key).addField('value', value));
@@ -40,11 +40,11 @@ class Stats {
 
     var time = DateTime.now().toUtc();
     var taggedPoint = Point(
-      pointPrefix + prefix + '_api',
+      '$pointPrefix${prefix}_api',
     ).addTag('service_id', serviceId.toString()).addTag('action', className).addField('response_time', timeMs).addField('db_queries', queriesCount);
 
     var untaggedPoint = Point(
-      pointPrefix + prefix + '_api',
+      '$pointPrefix${prefix}_api',
     ).addTag('service_id', 'ALL').addTag('action', 'ALL').addField('response_time', timeMs).addField('db_queries', queriesCount);
 
     tags.forEach((key, value) {

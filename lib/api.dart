@@ -1,4 +1,4 @@
-library swift_server;
+library;
 
 import 'dart:io';
 export 'dart:io' hide HttpException;
@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'logger.dart';
 
 import 'http_status_codes.dart';
 import 'package:args/args.dart';
@@ -26,9 +25,7 @@ const PostArg = true;
 const GetArg = true;
 const PathArg = true;
 
-/**
- * Single HTTP API Endpoint
- */
+/// Single HTTP API Endpoint
 @ComposeSubtypes
 abstract class HttpAction implements BackendProcessorInterface {
   @InjectClassName
@@ -39,10 +36,13 @@ abstract class HttpAction implements BackendProcessorInterface {
   @Inject
   Server get server;
 
+  @override
   @Create
   late Db db;
 
+  @override
   Logger get logger => server.logger;
+  @override
   ServerConfig get serverConfig => server.config;
 
   String? rawBody;
@@ -56,17 +56,17 @@ abstract class HttpAction implements BackendProcessorInterface {
   @Compile
   void setPostArgs(Map json);
 
-  Future reportError(error, stackTrace) => server.logger.handleError('action.' + className, error, stackTrace, request: request, requestBody: rawBody);
+  Future reportError(error, stackTrace) => server.logger.handleError('action.$className', error, stackTrace, request: request, requestBody: rawBody);
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
   // ignore: unused_element
   void _setPostArgsStringRequired(Map json, String name, String field) {
     if (!json.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
-    if (!(json[name] is String)) {
-      throw new HttpRequestException('Wrong required parameter ' + name);
+    if (json[name] is! String) {
+      throw HttpRequestException('Wrong required parameter $name');
     }
     field = json[name];
   }
@@ -83,7 +83,7 @@ abstract class HttpAction implements BackendProcessorInterface {
   // ignore: unused_element
   void _setPostArgsBoolRequired(Map json, String name, bool field) {
     if (!json.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
     field = json[name];
   }
@@ -100,7 +100,7 @@ abstract class HttpAction implements BackendProcessorInterface {
   // ignore: unused_element
   void _setPostArgsIntRequired(Map json, String name, int field) {
     if (!json.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
     field = json[name];
   }
@@ -117,7 +117,7 @@ abstract class HttpAction implements BackendProcessorInterface {
   // ignore: unused_element
   void _setPostArgsMapRequired(Map json, String name, Map field) {
     if (!json.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
     field = json[name];
   }
@@ -134,16 +134,16 @@ abstract class HttpAction implements BackendProcessorInterface {
   // ignore: unused_element
   void _setPostArgsListRequired(Map json, String name, List field) {
     if (!json.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
-    field = new List.from(json[name]!);
+    field = List.from(json[name]!);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(PostArg)
   // ignore: unused_element
   void _setPostArgsListOptional(Map json, String name, List? field) {
-    field = (json.containsKey(name) ? new List.from(json[name]) : null);
+    field = (json.containsKey(name) ? List.from(json[name]) : null);
   }
 
   @Compile
@@ -154,7 +154,7 @@ abstract class HttpAction implements BackendProcessorInterface {
   // ignore: unused_element
   void _setGetArgsStringRequired(Map<String, String> queryParameters, String name, String field) {
     if (!queryParameters.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
     field = queryParameters[name]!;
   }
@@ -164,12 +164,12 @@ abstract class HttpAction implements BackendProcessorInterface {
   // ignore: unused_element
   void _setGetArgsIntRequired(Map<String, String> queryParameters, String name, int field) {
     if (!queryParameters.containsKey(name)) {
-      throw new HttpRequestException('Missing required parameter ' + name);
+      throw HttpRequestException('Missing required parameter $name');
     }
     try {
       field = int.parse(queryParameters[name]!);
     } catch (_) {
-      throw new HttpRequestException('Wrong parameter format ' + name);
+      throw HttpRequestException('Wrong parameter format $name');
     }
   }
 
@@ -197,10 +197,11 @@ abstract class PostAction extends HttpAction {
     setGetArgs(request.uri.queryParameters);
   }
 
+  @override
   Future handleRequest() async {
     await prepareArguments();
     responseStatus = HttpStatus.ok;
-    String ret = await this.run();
+    String ret = await run();
     request.response.statusCode = responseStatus;
     //TODO content type for post actions
     request.response.headers.contentType = ContentType.text;
@@ -217,14 +218,14 @@ abstract class JsonAction extends HttpAction {
 
   Future prepareArguments() async {
     rawBody = await utf8.decoder.bind(request).join('');
-    if (rawBody!.length > 0) {
+    if (rawBody!.isNotEmpty) {
       try {
         var x = json.decode(rawBody!);
         if (x is Map) {
           postArgs = x;
         }
       } on FormatException catch (_) {
-        throw new HttpRequestException('wrong json format');
+        throw HttpRequestException('wrong json format');
       }
     }
     setPostArgs(postArgs);
@@ -232,7 +233,7 @@ abstract class JsonAction extends HttpAction {
     try {
       getParams = request.uri.queryParameters;
     } on FormatException catch (_) {
-      throw new HttpRequestException('malformed get params');
+      throw HttpRequestException('malformed get params');
     }
     setGetArgs(getParams);
   }
@@ -244,42 +245,39 @@ abstract class JsonAction extends HttpAction {
     request.response.write(ret);
   }
 
+  @override
   Future<void> handleRequest() async {
     await prepareArguments();
     responseStatus = HttpStatus.ok;
-    await outputResponse(await this.run());
+    await outputResponse(await run());
   }
 }
 
-/**
- * Routing Node
- */
+/// Routing Node
 class RouteNode {
   String? className;
   Map<String, RouteNode> subNodes = {};
 
   String? find(List<String> path) {
-    if (!path.isEmpty && subNodes.containsKey(path.first)) {
+    if (path.isNotEmpty && subNodes.containsKey(path.first)) {
       return subNodes[path.removeAt(0)]!.find(path);
     }
     return className;
   }
 
-  add(List<String> path, String className, {int depth = 0}) {
+  void add(List<String> path, String className, {int depth = 0}) {
     if (path.length == depth) {
       this.className = className;
     } else {
       if (!subNodes.containsKey(path[depth])) {
-        subNodes[path[depth]] = new RouteNode();
+        subNodes[path[depth]] = RouteNode();
       }
       subNodes[path[depth]]!.add(path, className, depth: ++depth);
     }
   }
 }
 
-/**
- * Routing Handler
- */
+/// Routing Handler
 @Compose
 abstract class Router implements Pluggable {
   @SubtypeFactory
@@ -291,8 +289,8 @@ abstract class Router implements Pluggable {
   RouteNode? _root;
   RouteNode get root {
     if (_root == null) {
-      _root = new RouteNode();
-      allActions.allClassNames.forEach((className) {
+      _root = RouteNode();
+      for (var className in allActions.allClassNames) {
         String name = className;
         if (name.startsWith('module_')) {
           name = name.substring(7);
@@ -304,11 +302,11 @@ abstract class Router implements Pluggable {
         var exts = ['Json', 'Txt', 'Ico'];
         for (var ext in exts) {
           if (path.last.endsWith(ext)) {
-            path.last = path.last.substring(0, path.last.length - ext.length) + '.' + ext.toLowerCase();
+            path.last = '${path.last.substring(0, path.last.length - ext.length)}.${ext.toLowerCase()}';
           }
         }
         _root!.add(path, className);
-      });
+      }
     }
     return _root!;
   }
@@ -318,8 +316,8 @@ abstract class Router implements Pluggable {
   }
 
   HttpAction? getForRequest(HttpRequest request) {
-    List<String> pathArgs = new List<String>.from(request.uri.pathSegments);
-    String? className = this.mapPathToClassName(pathArgs);
+    List<String> pathArgs = List<String>.from(request.uri.pathSegments);
+    String? className = mapPathToClassName(pathArgs);
     if (className == null) {
       return null;
     }
@@ -332,23 +330,23 @@ abstract class Router implements Pluggable {
 abstract class ServerArgs {
   ArgResults? args;
 
-  parse(List<String> arguments) {
+  void parse(List<String> arguments) {
     var parser = ArgParser();
     parser.addOption('config');
     parser.addOption('port');
     parser.addOption('threads');
-    this.args = parser.parse(arguments);
-    var argsPort = this.args!['port'];
+    args = parser.parse(arguments);
+    var argsPort = args!['port'];
     if (argsPort != null) {
       if (int.tryParse(argsPort) == null || int.parse(argsPort) < 1) {
-        throw new Exception('--port value must be a positive integer.');
+        throw Exception('--port value must be a positive integer.');
       }
       port = int.tryParse(argsPort);
     }
-    var argsThreads = this.args!['threads'];
+    var argsThreads = args!['threads'];
     if (argsThreads != null) {
       if (int.tryParse(argsThreads) == null || int.parse(argsThreads) < 1) {
-        throw new Exception('--threads value must be a positive integer.');
+        throw Exception('--threads value must be a positive integer.');
       }
       threads = int.tryParse(argsThreads);
     }
@@ -358,7 +356,7 @@ abstract class ServerArgs {
   int? threads;
 
   String get configPath {
-    return this.args!['config'];
+    return args!['config'];
   }
 }
 
@@ -371,9 +369,7 @@ class ServerThreadArgs {
   ServerThreadArgs(this.threadId, this.port, this.configPath, this.sharedData);
 }
 
-/**
- * Server
- */
+/// Server
 @Compose
 abstract class Server {
   @Inject
@@ -395,11 +391,11 @@ abstract class Server {
     int port = args.port ?? config.getRequired<int>('port');
     int threads = args.threads ?? config.getOptional<int>('threads', 1);
 
-    print('PID: ${pid} datadir: $datadir port: $port threads: $threads');
-    _startServerIsolate(new ServerThreadArgs(1, port, args.configPath, sharedServerData));
+    print('PID: $pid datadir: $datadir port: $port threads: $threads');
+    _startServerIsolate(ServerThreadArgs(1, port, args.configPath, sharedServerData));
     List<Isolate> isolates = [];
     for (var i = 2; i < threads + 1; i++) {
-      isolates.add(await Isolate.spawn(_startServerIsolate, new ServerThreadArgs(i, port, args.configPath, sharedServerData)));
+      isolates.add(await Isolate.spawn(_startServerIsolate, ServerThreadArgs(i, port, args.configPath, sharedServerData)));
     }
     await ProcessSignal.sigterm.watch().first;
     print("terminating HTTP server");
@@ -410,20 +406,20 @@ abstract class Server {
     await config.load(args.configPath);
     threadId = args.threadId;
     sharedServerData = args.sharedData;
-    print("thread ${threadId}, data ${sharedServerData.length}, listening on http://*:${args.port}");
+    print("thread $threadId, data ${sharedServerData.length}, listening on http://*:${args.port}");
 
     HttpServer server = await HttpServer.bind(InternetAddress.anyIPv4, args.port, shared: true);
     server.listen(handleRequest);
   }
 
-  void writeError(HttpRequest request, int code, String message, {StackTrace? trace = null}) {
+  void writeError(HttpRequest request, int code, String message, {StackTrace? trace}) {
     //TODO depend on request accepted header
     //request.response.write("<pre>${new HtmlEscape().convert(stackTrace.toString())}</pre>");
     try {
       request.response.statusCode = code;
       request.response.headers.contentType = ContentType.json;
     } catch (e) {}
-    var json = {'error': "${code} ${httpStatusMessage[code]!}", 'message': message};
+    var json = {'error': "$code ${httpStatusMessage[code]!}", 'message': message};
     if (config.getRequired<bool>('debug') && trace != null) {
       json['trace'] = trace.toString();
     }
@@ -433,14 +429,14 @@ abstract class Server {
   @Create
   late Db db;
 
-  Logger get logger => new Logger(db, config.getRequired<int>('service_id'), config.getRequired<bool>('debug'));
+  Logger get logger => Logger(db, config.getRequired<int>('service_id'), config.getRequired<bool>('debug'));
 
   Future handleRequest(HttpRequest request) async {
-    int? serviceId = null;
+    int? serviceId;
     String actionName = 'unknown';
-    HttpAction? action = null;
+    HttpAction? action;
     try {
-      int start = new DateTime.now().millisecondsSinceEpoch;
+      int start = DateTime.now().millisecondsSinceEpoch;
       serviceId = config.getRequired<int>('service_id');
       action = routing.getForRequest(request);
       int queries = 0;
@@ -455,13 +451,13 @@ abstract class Server {
         } on TimeoutException catch (error, stacktrace) {
           writeError(request, HttpStatus.requestTimeout, 'Request Timeout', trace: stacktrace);
         } on Redirect catch (error) {
-          request.response.redirect(new Uri.http(request.uri.authority, error.uri));
+          request.response.redirect(Uri.http(request.uri.authority, error.uri));
         } on HttpException catch (error, stacktrace) {
           writeError(request, error.code, error.message, trace: stacktrace);
         } catch (error, stacktrace) {
           writeError(request, HttpStatus.internalServerError, 'unknown error occured', trace: stacktrace);
           try {
-            await logger.handleError('action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
+            await logger.handleError('action.$actionName', error, stacktrace, request: request, requestBody: action.rawBody);
             db.disconnect();
           } catch (e) {
             print('CRITICAL! UNHANDLED ERROR');
@@ -472,8 +468,8 @@ abstract class Server {
           await action.db.disconnect();
         }
       }
-      int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-      print("T${threadId} ${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
+      int timeMs = DateTime.now().millisecondsSinceEpoch - start;
+      print("T$threadId ${request.method} ${request.uri} ${request.response.statusCode} [${timeMs}ms] [$queries]");
       await request.response.close();
 
       if (action != null) {
@@ -481,7 +477,7 @@ abstract class Server {
       }
     } catch (error, stacktrace) {
       try {
-        await logger.handleError('action.' + actionName, error, stacktrace, request: request, requestBody: action?.rawBody);
+        await logger.handleError('action.$actionName', error, stacktrace, request: request, requestBody: action?.rawBody);
         db.disconnect();
       } catch (e) {
         print('CRITICAL! UNHANDLED ERROR');

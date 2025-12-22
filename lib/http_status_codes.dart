@@ -1,9 +1,7 @@
 import 'dart:io';
 
-/**
- * HTTP status messages for dart build in HttpStatus codes
- * https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
- */
+/// HTTP status messages for dart build in HttpStatus codes
+/// https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
 Map<int, String> httpStatusMessage = {
   HttpStatus.continue_: "Continue",
   HttpStatus.switchingProtocols: "Switching protocols",

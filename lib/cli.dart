@@ -1,31 +1,24 @@
-library swift_server;
+library;
 
 import 'dart:io';
 
 import 'package:args/args.dart';
 export 'package:args/args.dart';
 
-import 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/annotations.dart';
 export 'package:swift_composer/swift_composer.dart';
-import 'package:swift_server/config.dart';
 export 'package:swift_server/config.dart';
 import 'package:path/path.dart' as path;
 import 'package:swift_server/server.dart';
 
-import 'tools.dart';
 export 'tools.dart';
 export 'mailer.dart';
 export 'cache.dart';
-import 'logger.dart';
 
 const CliArg = true;
 const CliParameter = true;
 const CliParameters = true;
 
-/**
- * Single Command
- */
+/// Single Command
 @ComposeSubtypes
 abstract class Command implements BackendProcessorInterface {
   @InjectClassName
@@ -34,10 +27,13 @@ abstract class Command implements BackendProcessorInterface {
   @Inject
   Cli get cli;
 
+  @override
   Db get db => cli.db;
+  @override
   ServerConfig get serverConfig => cli.config;
 
-  Logger get logger => new Logger(cli.db, 0, cli.config.getRequired<bool>('debug'));
+  @override
+  Logger get logger => Logger(cli.db, 0, cli.config.getRequired<bool>('debug'));
 
   Future run();
 
@@ -77,7 +73,7 @@ abstract class Command implements BackendProcessorInterface {
   @AnnotatedWith(CliArg)
   // ignore: unused_element
   void _setCliArgsIntOptional(ArgResults args, String name, int? field) {
-    field = args[name] ?? null;
+    field = args[name];
   }
 
   @CompileFieldsOfType
@@ -98,20 +94,20 @@ abstract class Command implements BackendProcessorInterface {
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
   void _setCliArgsParameterString(ArgResults args, String name, String field) {
-    if (args.rest.length <= this.paramI) {
-      throw Exception("Missing CLI ARG " + name);
+    if (args.rest.length <= paramI) {
+      throw Exception("Missing CLI ARG $name");
     }
-    field = args.rest[this.paramI++];
+    field = args.rest[paramI++];
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
   void _setCliArgsParameterInt(ArgResults args, String name, int field) {
-    if (args.rest.length <= this.paramI) {
-      throw Exception("Missing CLI ARG " + name);
+    if (args.rest.length <= paramI) {
+      throw Exception("Missing CLI ARG $name");
     }
-    field = int.parse(args.rest[this.paramI++]);
+    field = int.parse(args.rest[paramI++]);
   }
 
   @Compile
@@ -158,28 +154,26 @@ abstract class Command implements BackendProcessorInterface {
   @CompileFieldsOfType
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
-  void _configureCliParamsString(List<String> params, String name, String field, {String HelpText_value = ''}) {
+  void _configureCliParamsString(List<String> params, String name, String field) {
     params.add(name);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliParameter)
   // ignore: unused_element
-  void _configureCliParamsInt(List<String> params, String name, int field, {String HelpText_value = ''}) {
+  void _configureCliParamsInt(List<String> params, String name, int field) {
     params.add(name);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliParameters)
   // ignore: unused_element
-  void _configureCliParamsStringsList(List<String> params, String name, List<String> field, {String HelpText_value = ''}) {
-    params.add(name + ',..');
+  void _configureCliParamsStringsList(List<String> params, String name, List<String> field) {
+    params.add('$name,..');
   }
 }
 
-/**
- * Daemon process handler
- */
+/// Daemon process handler
 @Compose
 abstract class Cli {
   @Create
@@ -200,7 +194,7 @@ abstract class Cli {
   String commandToClassCode(String command) {
     var bits = command.split(':');
     if (bits.length > 1) {
-      bits[0] = 'module_' + bits[0];
+      bits[0] = 'module_${bits[0]}';
       bits[1] = bits[1][0].toUpperCase() + bits[1].substring(1);
     } else {
       bits[0] = bits[0][0].toUpperCase() + bits[0].substring(1);
@@ -232,14 +226,14 @@ abstract class Cli {
   String get executableName => 'cli';
 
   void printUsage(String error) async {
-    print('Error: ' + error);
+    print('Error: $error');
     print('Usage: $executableName <command> [arguments]');
     print('Global options:');
-    print(argParser!.usage.split('\n').map((l) => '\t' + l).join('\n'));
+    print(argParser!.usage.split('\n').map((l) => '\t$l').join('\n'));
     print('Available commands:');
     availableCommands.allSubtypes.forEach((key, info) {
       String help = info.annotations.containsKey('HelpText') ? info.annotations['HelpText'] : '';
-      print('\t' + classCodeToCommand(key) + ' ' + allCommands[key]!.params.map((e) => '<$e>').join(' ') + '\t' + help);
+      print('\t${classCodeToCommand(key)} ${allCommands[key]!.params.map((e) => '<$e>').join(' ')}\t$help');
     });
     print('Run "$executableName help <command>" for more information about a command.');
   }
@@ -261,10 +255,10 @@ abstract class Cli {
       args = argParser!.parse([]);
     }
     if (args.command == null) {
-      printUsage(error == null ? 'Unknown command' : error);
+      printUsage(error ?? 'Unknown command');
       return 1;
     } else {
-      await config.load(args['config'] ?? path.dirname(Platform.script.toFilePath()) + '/config.yaml');
+      await config.load(args['config'] ?? '${path.dirname(Platform.script.toFilePath())}/config.yaml');
       String classCode = commandToClassCode(args.command!.name!);
       var command = allCommands[classCode]!;
       command.setCliArgs(args.command!);
@@ -282,6 +276,7 @@ abstract class Help extends Command {
   @HelpText('command to display help for')
   late String command;
 
+  @override
   Future<void> run() async {
     String classCode = cli.commandToClassCode(command);
     if (cli.allCommands.containsKey(classCode)) {
@@ -289,7 +284,7 @@ abstract class Help extends Command {
       var parser = cli.getCommandArgParser(commandObj);
       var annotations = cli.availableCommands.allSubtypes[classCode]!.annotations;
       String help = annotations.containsKey('HelpText') ? annotations['HelpText'] : '';
-      print('${cli.executableName} $command [options] ' + commandObj.params.map((e) => '<$e>').join(' '));
+      print('${cli.executableName} $command [options] ${commandObj.params.map((e) => '<$e>').join(' ')}');
       print(help);
       print('Detailed options:');
       print(parser.usage);

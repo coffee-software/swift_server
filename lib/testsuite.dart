@@ -1,4 +1,4 @@
-library swift_server.test;
+library;
 
 import 'dart:async';
 import 'dart:convert';
@@ -71,13 +71,13 @@ class MockResponse extends StringBuffer implements HttpResponse {
   int get contentLength => length;
 
   @override
-  set contentLength(int v) => null;
+  set contentLength(int v) {}
 
   @override
   Duration? deadline;
 
   @override
-  Encoding encoding = new Utf8Codec();
+  Encoding encoding = Utf8Codec();
 
   @override
   bool persistentConnection = false;
@@ -134,7 +134,7 @@ class MockResponse extends StringBuffer implements HttpResponse {
   }
 
   @override
-  HttpHeaders headers = new MockHeaders(new Map<String, String>());
+  HttpHeaders headers = MockHeaders(<String, String>{});
 
   @override
   Future redirect(Uri location, {int status = HttpStatus.movedTemporarily}) {
@@ -143,10 +143,10 @@ class MockResponse extends StringBuffer implements HttpResponse {
   }
 
   dynamic toJson() {
-    if (this.headers.contentType != ContentType.json) {
-      throw new Exception('wrong content type: ${this.headers.contentType}');
+    if (headers.contentType != ContentType.json) {
+      throw Exception('wrong content type: ${headers.contentType}');
     }
-    return jsonDecode(this.toString());
+    return jsonDecode(toString());
   }
 }
 
@@ -163,14 +163,14 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   MockRequest.get(String path, {Map<String, String> headers = const {}})
     : method = "GET",
       uri = Uri(path: path),
-      this.headers = MockHeaders(headers),
-      super(new Stream.empty()) {}
+      headers = MockHeaders(headers),
+      super(Stream.empty());
 
   MockRequest.post(String path, String body, {Map<String, String> headers = const {}})
     : method = "POST",
       uri = Uri(path: path),
-      this.headers = MockHeaders(headers),
-      super(Stream.fromIterable(Uint8List.fromList(body.codeUnits).map((e) => Uint8List.fromList([e])))) {}
+      headers = MockHeaders(headers),
+      super(Stream.fromIterable(Uint8List.fromList(body.codeUnits).map((e) => Uint8List.fromList([e]))));
 
   @override
   // TODO: implement certificate
@@ -202,7 +202,7 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
 
   @override
   // TODO: implement response
-  MockResponse response = new MockResponse();
+  MockResponse response = MockResponse();
 
   @override
   // TODO: implement session
