@@ -13,7 +13,6 @@ Future<MockResponse> getServerResponse(Server server, MockRequest request) async
 }
 
 class MockHeaders extends HttpHeaders {
-
   Map<String, String> data;
 
   MockHeaders(this.data);
@@ -62,7 +61,6 @@ class MockHeaders extends HttpHeaders {
   String? value(String name) {
     return data.containsKey(name) ? data[name]! : null;
   }
-
 }
 
 class MockResponse extends StringBuffer implements HttpResponse {
@@ -136,7 +134,7 @@ class MockResponse extends StringBuffer implements HttpResponse {
   }
 
   @override
-  HttpHeaders headers = new MockHeaders(new Map<String,String>());
+  HttpHeaders headers = new MockHeaders(new Map<String, String>());
 
   @override
   Future redirect(Uri location, {int status = HttpStatus.movedTemporarily}) {
@@ -150,11 +148,9 @@ class MockResponse extends StringBuffer implements HttpResponse {
     }
     return jsonDecode(this.toString());
   }
-
 }
 
 class MockRequest extends StreamView<Uint8List> implements HttpRequest {
-
   @override
   String method;
 
@@ -164,19 +160,17 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   @override
   HttpHeaders headers;
 
-  MockRequest.get(String path, {Map<String,String> headers = const {}}) :
-        method = "GET",
-        uri = Uri(path:path),
-        this.headers = MockHeaders(headers),
-        super(new Stream.empty()) {
-  }
+  MockRequest.get(String path, {Map<String, String> headers = const {}})
+    : method = "GET",
+      uri = Uri(path: path),
+      this.headers = MockHeaders(headers),
+      super(new Stream.empty()) {}
 
-  MockRequest.post(String path, String body, {Map<String,String> headers = const {}}) :
-        method = "POST",
-        uri = Uri(path:path),
-        this.headers = MockHeaders(headers),
-        super(Stream.fromIterable(Uint8List.fromList(body.codeUnits).map((e) => Uint8List.fromList([e])))) {
-  }
+  MockRequest.post(String path, String body, {Map<String, String> headers = const {}})
+    : method = "POST",
+      uri = Uri(path: path),
+      this.headers = MockHeaders(headers),
+      super(Stream.fromIterable(Uint8List.fromList(body.codeUnits).map((e) => Uint8List.fromList([e])))) {}
 
   @override
   // TODO: implement certificate
@@ -193,7 +187,6 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   @override
   // TODO: implement cookies
   List<Cookie> get cookies => throw UnimplementedError();
-
 
   @override
   // TODO: implement persistentConnection
@@ -214,5 +207,4 @@ class MockRequest extends StreamView<Uint8List> implements HttpRequest {
   @override
   // TODO: implement session
   HttpSession get session => throw UnimplementedError();
-
 }

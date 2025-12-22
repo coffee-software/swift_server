@@ -23,13 +23,11 @@ export 'mailer.dart';
 import 'server.dart';
 export 'server.dart';
 
-
 /**
  * Single Cron Job
  */
 @ComposeSubtypes
 abstract class Job implements BackendProcessorInterface {
-
   @Require
   late Daemon daemon;
 
@@ -46,11 +44,9 @@ abstract class Job implements BackendProcessorInterface {
   Future run();
 
   int get minuteInterval => 5;
-
 }
 
 abstract class Ticker extends Job {
-
   int get minuteInterval => 1;
 
   Future run() async {
@@ -60,7 +56,6 @@ abstract class Ticker extends Job {
 
 @Compose
 abstract class DaemonArgs {
-
   ArgResults? args;
 
   parse(List<String> arguments) {
@@ -77,7 +72,6 @@ abstract class DaemonArgs {
   String get configPath {
     return this.args!['config'];
   }
-
 }
 
 /**
@@ -85,7 +79,6 @@ abstract class DaemonArgs {
  */
 @Compose
 abstract class Daemon {
-
   @Create
   late Db db;
 
@@ -117,13 +110,7 @@ abstract class Daemon {
     } catch (error, stacktrace) {
       await job.logger.handleError('job.' + key, error, stacktrace);
     }
-    await job.db.query(
-        'INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()',
-        [
-          serviceId,
-          key
-        ]
-    );
+    await job.db.query('INSERT INTO run_jobs SET app_id = ?, job = ? ON DUPLICATE KEY UPDATE run_count=run_count+1, last_run=NOW()', [serviceId, key]);
     int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
     await job.db.disconnect();
     job.stats?.saveStats(job.db.counter, timeMs);
@@ -136,9 +123,7 @@ abstract class Daemon {
     DateTime now = DateTime.now();
     for (var key in allJobs.allClassNames) {
       if (!lastStarts.containsKey(key)) {
-        lastStarts[key] = await db.fetchOne<DateTime>(
-            'SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?',
-            [serviceId, key]);
+        lastStarts[key] = await db.fetchOne<DateTime>('SELECT last_run FROM run_jobs WHERE app_id = ? AND job =?', [serviceId, key]);
       }
       //TODO @Interval annotation
       if ((lastStarts[key] == null) || (now.difference(lastStarts[key]!).inMinutes >= createJob(key, this).minuteInterval)) {
@@ -164,17 +149,15 @@ abstract class Daemon {
     if (amqpClient != null) {
       for (var consumer in amqpConsumers) {
         await consumer.cancel();
-      };
+      }
+      ;
       await amqpClient!.close();
     }
   }
 
   Future processQueuesIsolate() async {
     print("preparing queues(${allQueueProcessors.allClassNames.length}).");
-    amqp.ConnectionSettings settings = amqp.ConnectionSettings(
-        host: config.getRequired<String>('amqp.host'),
-        port: config.getRequired<int>('amqp.port')
-    );
+    amqp.ConnectionSettings settings = amqp.ConnectionSettings(host: config.getRequired<String>('amqp.host'), port: config.getRequired<int>('amqp.port'));
     amqpClient = new amqp.Client(settings: settings);
     amqp.Channel channel = await amqpClient!.channel();
     //TODO: configurable concurrent processors
@@ -182,37 +165,29 @@ abstract class Daemon {
     int serviceId = config.getRequired<int>('service_id');
     amqpConsumers = [];
     for (var processorName in allQueueProcessors.allClassNames) {
+      var processor = createQueueProcessor(processorName);
+      amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
+      amqp.Consumer consumer = await amqpQueue.consume(noAck: false);
+      amqpConsumers.add(consumer);
+      await consumer.listen((amqp.AmqpMessage message) async {
         var processor = createQueueProcessor(processorName);
-        amqp.Queue amqpQueue = await channel.queue(processor.queue.queueName);
-        amqp.Consumer consumer = await amqpQueue.consume(noAck: false);
-        amqpConsumers.add(consumer);
-        await consumer.listen((amqp.AmqpMessage message) async {
-          var processor = createQueueProcessor(processorName);
-          int start = new DateTime.now().millisecondsSinceEpoch;
-          processor.stats = new Stats(config, serviceId, 'queue', processor.className);
-          try {
-            var decodedMessage = json.decode(message.payloadAsString);
-            await processor.processMessage(decodedMessage);
-          } catch (error, stacktrace) {
-            await processor.logger.handleError(
-                'queue.' + processor.queue.className,
-                error,
-                stacktrace,
-                requestBody: message.payloadAsString
-            );
-          }
-          await processor.db.query(
-              'INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()',
-              [
-                serviceId,
-                processor.queue.className
-              ]
-          );
-          int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
-          await processor.db.disconnect();
-          processor.stats?.saveStats(processor.db.counter, timeMs);
-          message.ack();
-        });
+        int start = new DateTime.now().millisecondsSinceEpoch;
+        processor.stats = new Stats(config, serviceId, 'queue', processor.className);
+        try {
+          var decodedMessage = json.decode(message.payloadAsString);
+          await processor.processMessage(decodedMessage);
+        } catch (error, stacktrace) {
+          await processor.logger.handleError('queue.' + processor.queue.className, error, stacktrace, requestBody: message.payloadAsString);
+        }
+        await processor.db.query('INSERT INTO run_queues SET app_id = ?, queue = ? ON DUPLICATE KEY UPDATE process_count=process_count+1, last_process=NOW()', [
+          serviceId,
+          processor.queue.className,
+        ]);
+        int timeMs = new DateTime.now().millisecondsSinceEpoch - start;
+        await processor.db.disconnect();
+        processor.stats?.saveStats(processor.db.counter, timeMs);
+        message.ack();
+      });
     }
   }
 
@@ -238,12 +213,12 @@ abstract class Daemon {
           new DaemonIsolateArgs(receivePort.sendPort, this.config),
         );*/
       } else {
-        print ('no queues');
+        print('no queues');
       }
       if (allJobs.allClassNames.isNotEmpty) {
         processJobsIsolate();
       } else {
-        print ('no jobs');
+        print('no jobs');
       }
     }
   }

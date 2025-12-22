@@ -9,7 +9,6 @@ import 'package:yaml/yaml.dart';
  */
 @Compose
 class ServerConfig {
-
   @Create
   late Map data;
 
@@ -38,7 +37,7 @@ class ServerConfig {
   T _get<T>(String code, bool required, T? defaultValue) {
     List<String> path = code.split('.');
     Map ret = data;
-    for (int i=0; i < path.length - 1; i++) {
+    for (int i = 0; i < path.length - 1; i++) {
       if (!ret.containsKey(path[i])) {
         if (required) {
           throw new Exception('missing required config value: ${path[i]}');
@@ -74,4 +73,3 @@ class ServerConfig {
     return getRequired<bool>('debug');
   }
 }
-

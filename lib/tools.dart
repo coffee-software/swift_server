@@ -10,7 +10,6 @@ import 'config.dart';
 
 @Compose
 abstract class NamedLock {
-
   Map<String, RandomAccessFile?> _locks = {};
 
   Future<void> lock(String name) async {
@@ -36,7 +35,6 @@ abstract class NamedLock {
 
 @Compose
 abstract class Db {
-
   @Inject
   ServerConfig get config;
 
@@ -107,12 +105,10 @@ abstract class Db {
    * this is a simple atomic verison of INSERT INTO .. ON DUPLCIATE KEY UPDATE id=LAST_INSERT_ID(`id`) that returns primary key and does not create large gaps in auto_increment
    */
   Future<int> getIdOrInsert(String tableName, String where, List<Object?> whereArgs, String set, List<Object?> setArgs) async {
-    var id = await fetchOne<int>(
-        'SELECT `id` FROM $tableName WHERE $where', whereArgs
-    );
+    var id = await fetchOne<int>('SELECT `id` FROM $tableName WHERE $where', whereArgs);
     if (id == null) {
       //this ON DUPLICATE KEY is here so this wont have to run in transaction
-      id = (await query('INSERT INTO $tableName SET $set ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(`id`);',setArgs)).lastInsertID.toInt();
+      id = (await query('INSERT INTO $tableName SET $set ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(`id`);', setArgs)).lastInsertID.toInt();
     }
     return id;
   }
@@ -143,7 +139,7 @@ abstract class Db {
         var ret = await stmt.execute(values);
         await stmt.deallocate();
         return ret;
-      } on MySQLClientException catch(_) {
+      } on MySQLClientException catch (_) {
         //connection was closed. retrying once
         if (!connection.connected) {
           _connection = null;
@@ -160,16 +156,12 @@ abstract class Db {
 
 @Compose
 abstract class Net {
-
   @Inject
   ServerConfig get serverConfig;
 
   Future<dynamic> _json(String method, String url, dynamic params, {Map<String, String> extraHeaders = const {}}) async {
     var client = new HttpClient();
-    Map<String,String> headers = {
-      'Content-type' : 'application/json',
-      'Accept': 'application/json',
-    };
+    Map<String, String> headers = {'Content-type': 'application/json', 'Accept': 'application/json'};
     extraHeaders.forEach((key, value) {
       headers[key] = value;
     });
@@ -218,14 +210,14 @@ abstract class Net {
   Future<List<int>> _raw(String method, String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
     var client = new HttpClient();
     HttpClientRequest req;
-    Map<String,String> headers = {};
+    Map<String, String> headers = {};
     if (params != null) {
       headers['Content-type'] = 'application/x-www-form-urlencoded';
     }
     extraHeaders.forEach((key, value) {
       headers[key] = value;
     });
-    final String? body = params == null ? null : params.map((k,v) => MapEntry(k, Uri.encodeComponent(k) + '=' + Uri.encodeComponent(v))).values.join('&');
+    final String? body = params == null ? null : params.map((k, v) => MapEntry(k, Uri.encodeComponent(k) + '=' + Uri.encodeComponent(v))).values.join('&');
     if (serverConfig.isDebugEnabled) {
       print("REQUEST: ${method.toUpperCase()} ${Uri.parse(url)}");
       headers.forEach((key, value) {
@@ -268,23 +260,22 @@ abstract class Net {
 
   @deprecated
   Future<List<int>> get(String url, {Map<String, String> extraHeaders = const {}}) async {
-    return await getRaw(url, extraHeaders:extraHeaders);
+    return await getRaw(url, extraHeaders: extraHeaders);
   }
 
   Future<List<int>> getRaw(String url, {Map<String, String> extraHeaders = const {}}) async {
-    return await _raw('get', url, null, extraHeaders:extraHeaders);
+    return await _raw('get', url, null, extraHeaders: extraHeaders);
   }
 
   Future<List<int>> postRaw(String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
-    return await _raw('post', url, params, extraHeaders:extraHeaders);
+    return await _raw('post', url, params, extraHeaders: extraHeaders);
   }
 
   Future<String> getHtml(String url, {Map<String, String> extraHeaders = const {}}) async {
-    return new String.fromCharCodes(await _raw('get', url, null, extraHeaders:extraHeaders));
+    return new String.fromCharCodes(await _raw('get', url, null, extraHeaders: extraHeaders));
   }
 
   Future<String> postHtml(String url, Map? params, {Map<String, String> extraHeaders = const {}}) async {
-    return new String.fromCharCodes(await _raw('post', url, params, extraHeaders:extraHeaders));
+    return new String.fromCharCodes(await _raw('post', url, params, extraHeaders: extraHeaders));
   }
-
 }

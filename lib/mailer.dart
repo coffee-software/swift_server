@@ -10,7 +10,6 @@ import 'package:swift_composer/swift_composer.dart';
 import 'package:swift_server/config.dart';
 
 abstract class MailerAttachment {
-
   Attachment _getAttachment();
 
   Attachment getAsInline(String key) {
@@ -23,11 +22,10 @@ abstract class MailerAttachment {
 
   Attachment getAsAttachment(String key) {
     var attachment = _getAttachment()
-    ..fileName = key
-    ..location = Location.attachment;
+      ..fileName = key
+      ..location = Location.attachment;
     return attachment;
   }
-
 }
 
 class MailerFileAttachment extends MailerAttachment {
@@ -53,7 +51,6 @@ class MailerBase64Attachment extends MailerAttachment {
 }
 
 class MailAddress {
-
   final String? name;
   final String email;
 
@@ -65,23 +62,19 @@ class MailAddress {
 
 @Compose
 abstract class Mailer {
-
   @Inject
   ServerConfig get config;
 
   Future<bool> sendEmail(
-      String subject,
-      String bodyHtml,
-      String bodyText,
-      Iterable<MailAddress> recipients,
-      {
-        Map<String, MailerAttachment> images = const {},
-        Map<String, MailerAttachment> attachments = const {},
-        Iterable<MailAddress> replyTo = const [],
-        Iterable<MailAddress> sendFyiTo = const [],
-      }
-      ) async {
-
+    String subject,
+    String bodyHtml,
+    String bodyText,
+    Iterable<MailAddress> recipients, {
+    Map<String, MailerAttachment> images = const {},
+    Map<String, MailerAttachment> attachments = const {},
+    Iterable<MailAddress> replyTo = const [],
+    Iterable<MailAddress> sendFyiTo = const [],
+  }) async {
     var type = config.getRequired<String>('mailer.type');
     if (type == 'smtp') {
       var ret = await _sendSmtpEmail(subject, bodyHtml, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
@@ -92,7 +85,6 @@ abstract class Mailer {
         }
       }
       return ret;
-
     } else if (type == 'print') {
       return await _printEmail(subject, bodyText, recipients, replyTo: replyTo, images: images, attachments: attachments);
     } else {
@@ -101,15 +93,13 @@ abstract class Mailer {
   }
 
   Future<bool> _printEmail(
-      String subject,
-      String bodyText,
-      Iterable<MailAddress> recipients,
-      {
-        Map<String, MailerAttachment> images = const {},
-        Map<String, MailerAttachment> attachments = const {},
-        Iterable<MailAddress> replyTo = const []
-      }
-      ) async {
+    String subject,
+    String bodyText,
+    Iterable<MailAddress> recipients, {
+    Map<String, MailerAttachment> images = const {},
+    Map<String, MailerAttachment> attachments = const {},
+    Iterable<MailAddress> replyTo = const [],
+  }) async {
     print('################## SENDING EMAIL ##################');
     print('# subject: ' + subject);
     print('# recipients: ' + recipients.join(','));
@@ -124,50 +114,44 @@ abstract class Mailer {
   }
 
   Future<bool> _sendSmtpEmail(
-      String subject,
-      String bodyHtml,
-      String bodyText,
-      Iterable<MailAddress> recipients,
-      {
-        Map<String, MailerAttachment> images = const {},
-        Map<String, MailerAttachment> attachments = const {},
-        Iterable<MailAddress> replyTo = const []
-      }
-      ) async {
-
+    String subject,
+    String bodyHtml,
+    String bodyText,
+    Iterable<MailAddress> recipients, {
+    Map<String, MailerAttachment> images = const {},
+    Map<String, MailerAttachment> attachments = const {},
+    Iterable<MailAddress> replyTo = const [],
+  }) async {
     var smtpServer = new SmtpServer(
-        config.getRequired<String>('mailer.hostName'),
-        name: config.getRequired<String>('mailer.sender.email'),
-        username: config.getRequired<String?>('mailer.username'),
-        password: config.getRequired<String?>('mailer.password'),
-        port: config.getRequired<int>('mailer.port'),
-        allowInsecure: config.getRequired<String?>('mailer.username') == null
+      config.getRequired<String>('mailer.hostName'),
+      name: config.getRequired<String>('mailer.sender.email'),
+      username: config.getRequired<String?>('mailer.username'),
+      password: config.getRequired<String?>('mailer.password'),
+      port: config.getRequired<int>('mailer.port'),
+      allowInsecure: config.getRequired<String?>('mailer.username') == null,
     );
 
     List<Attachment> mailAttachments = [];
     for (var i in images.keys) {
       mailAttachments.add(images[i]!.getAsInline(i));
-    };
+    }
+    ;
     for (var a in attachments.keys) {
       mailAttachments.add(attachments[a]!.getAsAttachment(a));
-    };
+    }
+    ;
 
-    int randomIdPart = new Random().nextInt((1<<32) - 1);
+    int randomIdPart = new Random().nextInt((1 << 32) - 1);
 
     final emailMessage = Message()
-      ..from = Address(
-          config.getRequired<String>('mailer.sender.email'),
-          config.getRequired<String>('mailer.sender.name')
-      )
+      ..from = Address(config.getRequired<String>('mailer.sender.email'), config.getRequired<String>('mailer.sender.name'))
       ..recipients.addAll(recipients.map((e) => Address(e.email, e.name)))
       ..subject = subject
       ..text = bodyText
       ..html = bodyHtml
       ..attachments = mailAttachments;
 
-    Map<String, dynamic> headers = {
-      'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-${randomIdPart}@${Platform.localHostname}>'
-    };
+    Map<String, dynamic> headers = {'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-${randomIdPart}@${Platform.localHostname}>'};
 
     if (replyTo.isNotEmpty) {
       headers['Reply-To'] = replyTo.map((e) => Address(e.email, e.name));
@@ -179,5 +163,4 @@ abstract class Mailer {
     await send(emailMessage, smtpServer);
     return true;
   }
-
 }

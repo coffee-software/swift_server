@@ -1,5 +1,3 @@
-
-
 import 'dart:convert';
 
 import 'package:swift_composer/swift_composer.dart';
@@ -8,7 +6,6 @@ import 'package:swift_server/config.dart';
 
 @Compose
 abstract class RedisCache {
-
   @Inject
   ServerConfig get config;
 
@@ -20,10 +17,7 @@ abstract class RedisCache {
   Future<Command> getClient() async {
     if (connection == null) {
       connection = RedisConnection();
-      command = connection!.connect(
-        config.getRequired<String>('redis.host'),
-        config.getRequired<int>('redis.port'),
-      );
+      command = connection!.connect(config.getRequired<String>('redis.host'), config.getRequired<int>('redis.port'));
     }
     return await command!;
   }
@@ -37,14 +31,14 @@ abstract class RedisCache {
   }
 
   Future<void> clearValue(String key) async {
-    await _exec([ "DEL", prefix + key ]);
+    await _exec(["DEL", prefix + key]);
   }
 
   /**
    * expireIn in seconds
    */
-  Future<void> setValue(String key, Map value, {int expireIn=-1}) async {
-    var args = [ "SET", prefix + key, jsonEncode(value) ];
+  Future<void> setValue(String key, Map value, {int expireIn = -1}) async {
+    var args = ["SET", prefix + key, jsonEncode(value)];
     if (expireIn != -1) {
       args.add('EX');
       args.add(expireIn.toString());
@@ -53,12 +47,12 @@ abstract class RedisCache {
   }
 
   Future<Map?> getValue(String key) async {
-    String? ret = await _exec([ "GET", prefix + key ]);
+    String? ret = await _exec(["GET", prefix + key]);
     return ret == null ? ret : jsonDecode(ret);
   }
 
-  Future<void> setString(String key, String value, {int expireIn=-1}) async {
-    var args = [ "SET", prefix + key, value ];
+  Future<void> setString(String key, String value, {int expireIn = -1}) async {
+    var args = ["SET", prefix + key, value];
     if (expireIn != -1) {
       args.add('EX');
       args.add(expireIn.toString());
@@ -67,8 +61,7 @@ abstract class RedisCache {
   }
 
   Future<String?> getString(String key) async {
-    String? ret = await _exec([ "GET", prefix + key ]);
+    String? ret = await _exec(["GET", prefix + key]);
     return ret;
   }
-
 }

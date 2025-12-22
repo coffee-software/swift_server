@@ -31,7 +31,6 @@ const PathArg = true;
  */
 @ComposeSubtypes
 abstract class HttpAction implements BackendProcessorInterface {
-
   @InjectClassName
   String get className;
 
@@ -148,7 +147,6 @@ abstract class HttpAction implements BackendProcessorInterface {
   }
 
   @Compile
-
   void setGetArgs(Map<String, String> queryParameters);
 
   @CompileFieldsOfType
@@ -194,7 +192,7 @@ abstract class PostAction extends HttpAction {
 
   Future prepareArguments() async {
     rawBody = await utf8.decoder.bind(request).join('');
-    postArgs = Uri.splitQueryString(rawBody!, encoding:encoding);
+    postArgs = Uri.splitQueryString(rawBody!, encoding: encoding);
     setPostArgs(postArgs);
     setGetArgs(request.uri.queryParameters);
   }
@@ -212,7 +210,6 @@ abstract class PostAction extends HttpAction {
 
 @ComposeSubtypes
 abstract class JsonAction extends HttpAction {
-
   int responseStatus = HttpStatus.ok;
   Map postArgs = {};
 
@@ -267,6 +264,7 @@ class RouteNode {
     }
     return className;
   }
+
   add(List<String> path, String className, {int depth = 0}) {
     if (path.length == depth) {
       this.className = className;
@@ -274,7 +272,7 @@ class RouteNode {
       if (!subNodes.containsKey(path[depth])) {
         subNodes[path[depth]] = new RouteNode();
       }
-      subNodes[path[depth]]!.add(path, className, depth:++depth);
+      subNodes[path[depth]]!.add(path, className, depth: ++depth);
     }
   }
 }
@@ -284,7 +282,6 @@ class RouteNode {
  */
 @Compose
 abstract class Router implements Pluggable {
-
   @SubtypeFactory
   HttpAction createAction(String className, HttpRequest request, List<String> pathArgs);
 
@@ -310,10 +307,7 @@ abstract class Router implements Pluggable {
             path.last = path.last.substring(0, path.last.length - ext.length) + '.' + ext.toLowerCase();
           }
         }
-        _root!.add(
-            path,
-            className
-        );
+        _root!.add(path, className);
       });
     }
     return _root!;
@@ -332,12 +326,10 @@ abstract class Router implements Pluggable {
     HttpAction action = createAction(className, request, pathArgs);
     return action;
   }
-
 }
 
 @Compose
 abstract class ServerArgs {
-
   ArgResults? args;
 
   parse(List<String> arguments) {
@@ -360,7 +352,6 @@ abstract class ServerArgs {
       }
       threads = int.tryParse(argsThreads);
     }
-
   }
 
   int? port;
@@ -369,20 +360,16 @@ abstract class ServerArgs {
   String get configPath {
     return this.args!['config'];
   }
-
 }
 
 class ServerThreadArgs {
-
   int threadId;
   int port;
   String configPath;
   Map sharedData;
 
   ServerThreadArgs(this.threadId, this.port, this.configPath, this.sharedData);
-
 }
-
 
 /**
  * Server
@@ -400,9 +387,7 @@ abstract class Server {
 
   String get datadir => config.getRequired<String>('datadir');
 
-
   Future serve(List<String> arguments) async {
-
     print("starting HTTP server...");
     args.parse(arguments);
     await config.load(args.configPath);
@@ -427,11 +412,7 @@ abstract class Server {
     sharedServerData = args.sharedData;
     print("thread ${threadId}, data ${sharedServerData.length}, listening on http://*:${args.port}");
 
-    HttpServer server = await HttpServer.bind(
-      InternetAddress.anyIPv4,
-      args.port,
-      shared: true,
-    );
+    HttpServer server = await HttpServer.bind(InternetAddress.anyIPv4, args.port, shared: true);
     server.listen(handleRequest);
   }
 
@@ -441,13 +422,8 @@ abstract class Server {
     try {
       request.response.statusCode = code;
       request.response.headers.contentType = ContentType.json;
-    } catch (e) {
-
-    }
-    var json = {
-      'error': "${code} ${httpStatusMessage[code]!}",
-      'message': message
-    };
+    } catch (e) {}
+    var json = {'error': "${code} ${httpStatusMessage[code]!}", 'message': message};
     if (config.getRequired<bool>('debug') && trace != null) {
       json['trace'] = trace.toString();
     }
@@ -476,7 +452,6 @@ abstract class Server {
           actionName = action.className;
           //TODO: add timeout option
           await action.handleRequest(); //.timeout(new Duration(milliseconds: 1000));
-
         } on TimeoutException catch (error, stacktrace) {
           writeError(request, HttpStatus.requestTimeout, 'Request Timeout', trace: stacktrace);
         } on Redirect catch (error) {
@@ -484,12 +459,7 @@ abstract class Server {
         } on HttpException catch (error, stacktrace) {
           writeError(request, error.code, error.message, trace: stacktrace);
         } catch (error, stacktrace) {
-          writeError(
-              request,
-              HttpStatus.internalServerError,
-              'unknown error occured',
-              trace: stacktrace
-          );
+          writeError(request, HttpStatus.internalServerError, 'unknown error occured', trace: stacktrace);
           try {
             await logger.handleError('action.' + actionName, error, stacktrace, request: request, requestBody: action.rawBody);
             db.disconnect();
@@ -507,11 +477,8 @@ abstract class Server {
       await request.response.close();
 
       if (action != null) {
-        action.stats?.saveStats(
-            action.db.counter, timeMs
-        );
+        action.stats?.saveStats(action.db.counter, timeMs);
       }
-      
     } catch (error, stacktrace) {
       try {
         await logger.handleError('action.' + actionName, error, stacktrace, request: request, requestBody: action?.rawBody);
@@ -522,5 +489,4 @@ abstract class Server {
       }
     }
   }
-
 }

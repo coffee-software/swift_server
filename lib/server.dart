@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:swift_composer/swift_composer.dart';
@@ -13,7 +12,6 @@ import 'logger.dart';
 export 'logger.dart';
 
 export 'annotations.dart';
-
 
 Map sharedServerData = {};
 
@@ -36,12 +34,9 @@ class HttpRequestException extends HttpException {
   HttpRequestException(String message) : super(HttpStatus.unprocessableEntity, message);
 }
 
-
 //shared in actions, queue processors and jobs
 abstract class BackendProcessorInterface {
-
   Db get db;
   Logger get logger;
   ServerConfig get serverConfig;
-
 }

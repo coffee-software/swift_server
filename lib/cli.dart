@@ -23,7 +23,6 @@ const CliArg = true;
 const CliParameter = true;
 const CliParameters = true;
 
-
 /**
  * Single Command
  */
@@ -125,28 +124,28 @@ abstract class Command implements BackendProcessorInterface {
   @AnnotatedWith(CliArg)
   // ignore: unused_element
   void _configureCliArgsStringRequired(ArgParser parser, String name, String field, {String HelpText_value = ''}) {
-    parser.addOption(name, help: HelpText_value, valueHelp:name, mandatory:true);
+    parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: true);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
   // ignore: unused_element
   void _configureCliArgsStringOptional(ArgParser parser, String name, String? field, {String HelpText_value = ''}) {
-    parser.addOption(name, help: HelpText_value, valueHelp:name, mandatory:false);
+    parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: false);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
   // ignore: unused_element
   void _configureCliArgsIntRequired(ArgParser parser, String name, int field, {String HelpText_value = ''}) {
-    parser.addOption(name, help: HelpText_value, valueHelp:name, mandatory:true);
+    parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: true);
   }
 
   @CompileFieldsOfType
   @AnnotatedWith(CliArg)
   // ignore: unused_element
   void _configureCliArgsIntOptional(ArgParser parser, String name, int? field, {String HelpText_value = ''}) {
-    parser.addOption(name, help: HelpText_value, valueHelp:name, mandatory:false);
+    parser.addOption(name, help: HelpText_value, valueHelp: name, mandatory: false);
   }
 
   @CompileFieldsOfType
@@ -217,7 +216,7 @@ abstract class Cli {
 
   ArgParser getRootArgParser() {
     var parser = ArgParser();
-    parser.addOption('config', valueHelp: 'path', help: 'path to config file, defaults to \'config.yaml\'', mandatory:false);
+    parser.addOption('config', valueHelp: 'path', help: 'path to config file, defaults to \'config.yaml\'', mandatory: false);
     return parser;
   }
 
@@ -257,7 +256,7 @@ abstract class Cli {
     String? error;
     try {
       args = argParser!.parse(arguments);
-    } on FormatException catch(e) {
+    } on FormatException catch (e) {
       error = e.message;
       args = argParser!.parse([]);
     }
@@ -279,7 +278,6 @@ abstract class Cli {
 
 @HelpText('print detailed help for given command')
 abstract class Help extends Command {
-
   @CliParameter
   @HelpText('command to display help for')
   late String command;
@@ -299,5 +297,4 @@ abstract class Help extends Command {
       print('unknown command $command');
     }
   }
-
 }

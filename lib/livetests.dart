@@ -18,8 +18,7 @@ Future<HttpClientResponse> getResponseFromApi(String domain, String path, {Map? 
   }
   if (post != null) {
     String body = json.encode(post);
-    request.headers.set(
-        HttpHeaders.contentTypeHeader, "application/json; charset=UTF-8");
+    request.headers.set(HttpHeaders.contentTypeHeader, "application/json; charset=UTF-8");
     request.headers.set(HttpHeaders.contentLengthHeader, body.length);
     request.write(body);
   }
@@ -27,8 +26,7 @@ Future<HttpClientResponse> getResponseFromApi(String domain, String path, {Map? 
 }
 
 Future<Map> getJsonFromApi(String domain, String path, {Map? post, Map? headers}) async {
-
-  var response = await getResponseFromApi(domain, path, post:post, headers:headers);
+  var response = await getResponseFromApi(domain, path, post: post, headers: headers);
   String responseBody = await response.transform(const Utf8Decoder()).join();
   return jsonDecode(responseBody);
 }

@@ -8,7 +8,6 @@ import 'server.dart';
 
 @ComposeSubtypes
 abstract class QueueProcessor<Q extends Queue, T> implements BackendProcessorInterface {
-
   @Create
   late Db db;
 

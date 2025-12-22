@@ -4,7 +4,6 @@ import 'dart:convert';
 
 @ComposeSubtypes
 abstract class Queue<T> {
-
   @InjectClassName
   String get className;
 
@@ -14,10 +13,7 @@ abstract class Queue<T> {
   String get queueName => config.getRequired<String>('amqp.prefix') + className;
 
   amqp.Client getClient() {
-    amqp.ConnectionSettings settings = amqp.ConnectionSettings(
-        host: config.getRequired<String>('amqp.host'),
-        port: config.getRequired<int>('amqp.port')
-    );
+    amqp.ConnectionSettings settings = amqp.ConnectionSettings(host: config.getRequired<String>('amqp.host'), port: config.getRequired<int>('amqp.port'));
     return amqp.Client(settings: settings);
   }
 
