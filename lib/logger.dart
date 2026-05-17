@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'tools.dart';
+import 'server.dart';
 import 'dart:io';
 
 class Logger {
@@ -39,6 +40,18 @@ class Logger {
   }
 
   Future handleError(String handler, exception, StackTrace stacktrace, {HttpRequest? request, String? requestBody}) async {
+
+    String debugRequest = '';
+    if (request != null) {
+      debugRequest += """${request.method} ${request.requestedUri}\n${request.headers.toString()}\n""";
+    }
+    if (requestBody != null) {
+      debugRequest += requestBody;
+    }
+    if (exception is ExceptionWithInfo) {
+      debugRequest = exception.info;
+    }
+
     if (debug) {
       print('###############################################################');
       print('###############         Unhandled Error         ###############');
@@ -51,16 +64,11 @@ class Logger {
       } catch (e, stack2) {
         print(stack2.toString());
       }
+      print('###############           Request               ###############');
+      print(debugRequest.toString());
       print('###############################################################');
     }
 
-    String debugRequest = '';
-    if (request != null) {
-      debugRequest += """${request.method} ${request.requestedUri}\n${request.headers.toString()}\n""";
-    }
-    if (requestBody != null) {
-      debugRequest += requestBody;
-    }
     String location = stacktrace.toString().split('\n').first;
 
     await db.query(

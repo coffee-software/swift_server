@@ -25,6 +25,17 @@ class HttpException implements Exception {
   }
 }
 
+class ExceptionWithInfo implements Exception {
+  String message;
+  String info;
+  ExceptionWithInfo(this.message, this.info);
+
+  @override
+  String toString() {
+    return "ExceptionWithInfo: $message";
+  }
+}
+
 class HttpUnauthorizedException extends HttpException {
   HttpUnauthorizedException() : super(HttpStatus.unauthorized, 'Unauthorised');
 }
