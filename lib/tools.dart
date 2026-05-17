@@ -2,6 +2,7 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:mysql_client_plus/exception.dart';
 import 'package:swift_composer/swift_composer.dart';
 import 'package:mysql_client_plus/mysql_client_plus.dart';
@@ -98,6 +99,15 @@ abstract class Db {
       ret = row.typedAssoc();
     }
     return ret;
+  }
+  
+  Future<T> runInTransaction<T>(FutureOr<T> Function(Db db) callback) async {
+    var connection = await getConnection();
+    return await connection.transactional((conn){
+      //make sure to use same connection
+      this._connection = conn;
+      return callback(this);
+    });
   }
 
   /*
