@@ -269,7 +269,14 @@ abstract class Cli {
       String classCode = commandToClassCode(args.command!.name!);
       var command = allCommands[classCode]!;
       command.setCliArgs(args.command!);
-      await command.run();
+
+      try {
+        await command.run();
+      } on ExceptionWithInfo catch (error) {
+        print('errors info:');
+        print(error.info);
+        throw error;
+      }
       await db.disconnect();
       await redisCache.disconnect();
       return 0;
