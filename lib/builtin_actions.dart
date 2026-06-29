@@ -38,7 +38,10 @@ abstract class StatusActionErrorsCheck extends StatusActionCheck {
   @override
   Future<Map<String, StatusActionTest>> check(StatusAction action) async {
     int serviceId = server.config.getRequired<int>('service_id');
-    var errorsCount = await action.db.fetchOne<String>('SELECT SUM(current_count) FROM run_errors WHERE app_id = ? AND last_time > DATE_SUB(NOW(),INTERVAL 2 HOUR);', [serviceId]);
+    var errorsCount = await action.db.fetchOne<String>(
+      'SELECT SUM(current_count) FROM run_errors WHERE app_id = ? AND last_time > DATE_SUB(NOW(),INTERVAL 2 HOUR);',
+      [serviceId],
+    );
     var intCount = errorsCount != null ? BigInt.parse(errorsCount).toInt() : 0;
     return {'errors': StatusActionTest(intCount < 10, value: intCount)};
   }
@@ -66,13 +69,17 @@ abstract class StatusAction extends JsonAction {
     if (!healthy) {
       responseStatus = HttpStatus.serviceUnavailable;
     }
-    var now = DateTime.now();
     Map checksInfo = {};
     checks.forEach((key, value) {
-      checksInfo[key] = {'ok': value.isOk, 'value': value.value};
+      checksInfo[key] = {'healthy': value.isOk, 'value': value.value};
     });
-
-    return {'time': now.toString(), 'uptime': now.difference(_uptimeTimer!).inSeconds.toDouble() / (60 * 60 * 24), 'healthy': healthy, 'checks': checksInfo};
+    var now = DateTime.now();
+    return {
+      'expires': now.add(Duration(minutes: 5)).toUtc().millisecondsSinceEpoch,
+      'healthy': healthy,
+      'checks': checksInfo,
+      'stats': {'uptime': now.difference(_uptimeTimer!).inSeconds.toDouble() / (60 * 60 * 24)},
+    };
   }
 }
 
