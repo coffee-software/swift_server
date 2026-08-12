@@ -27,9 +27,14 @@ class Stats {
     if (config.getOptional<String>('influx.url', 'none') == 'none') {
       return;
     }
+    var influxUrl = config.getOptional<String?>('influx.url', null);
+
+    if (influxUrl == null) {
+      return;
+    }
 
     var client = InfluxDBClient(
-      url: config.getRequired<String>('influx.url'),
+      url: influxUrl!,
       token: config.getRequired<String>('influx.token'),
       org: config.getRequired<String>('influx.org'),
       bucket: config.getRequired<String>('influx.bucket'),
