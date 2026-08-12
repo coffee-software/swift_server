@@ -151,7 +151,7 @@ abstract class Mailer {
       ..html = bodyHtml
       ..attachments = mailAttachments;
 
-    Map<String, dynamic> headers = {'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-$randomIdPart@${Platform.localHostname}>'};
+    Map<String, dynamic> headers = {'Message-ID': '<${DateTime.now().millisecondsSinceEpoch}-$randomIdPart@${config.getRequired<String>('mailer.sender.email').split('@').last}>'};
 
     if (replyTo.isNotEmpty) {
       headers['Reply-To'] = replyTo.map((e) => Address(e.email, e.name));
